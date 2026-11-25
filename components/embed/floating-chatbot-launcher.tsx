@@ -5,10 +5,17 @@ import { AnimatePresence, motion } from 'motion/react';
 import { X } from 'lucide-react';
 import { useApp } from '@/components/providers/app-provider';
 import { CadenceOrbLauncherIcon } from '@/components/embed/cadence-orb';
+import { CadenceBotFaceIcon } from '@/components/embed/cadence-bot-icon';
 import { VoiceWidgetPopup } from '@/components/embed/voice-widget-popup';
 import { VoiceAgent } from '@/lib/types';
 
-export function FloatingChatbotLauncher({ agent }: { agent: VoiceAgent }) {
+export function FloatingChatbotLauncher({
+  agent,
+  variant = 'orb',
+}: {
+  agent: VoiceAgent;
+  variant?: 'orb' | 'dark';
+}) {
   const { knowledgeSources } = useApp();
   const [open, setOpen] = useState(false);
 
@@ -95,6 +102,10 @@ export function FloatingChatbotLauncher({ agent }: { agent: VoiceAgent }) {
         {open ? (
           <span className="flex h-12 w-12 items-center justify-center rounded-full border border-neutral-200 bg-neutral-900 text-white shadow-lg transition-colors group-hover:bg-neutral-800">
             <X className="h-5 w-5" strokeWidth={2} />
+          </span>
+        ) : variant === 'dark' ? (
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-950 text-white shadow-lg transition-colors group-hover:bg-neutral-800">
+            <CadenceBotFaceIcon className="h-6 w-6 text-white" eyeStroke="#0a0a0a" />
           </span>
         ) : (
           <span className="relative flex h-12 w-12 items-center justify-center">

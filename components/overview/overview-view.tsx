@@ -4,30 +4,22 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  TbArrowRight,
-  TbCheck,
-  TbCircleCheck,
-  TbCopy,
-  TbFilePencil,
-  TbMessage,
-  TbPlayerPause,
-  TbPlayerPlay,
-  TbPlus,
-  TbRobot,
-  TbSearch,
-  TbWorld,
-  TbX,
-} from 'react-icons/tb';
+  ArrowRight,
+  Check,
+  CirclePlay,
+  Copy,
+  ExternalLink,
+  Plus,
+  X,
+} from 'lucide-react';
 import { useApp } from '@/components/providers/app-provider';
-import { CadenceOrbLauncherIcon } from '@/components/embed/cadence-orb';
+import { CadenceBotFaceIcon } from '@/components/embed/cadence-bot-icon';
 import { FloatingChatbotLauncher } from '@/components/embed/floating-chatbot-launcher';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function OverviewView() {
   const router = useRouter();
   const { isLoading, agents, pushToast } = useApp();
-  const [searchQuery, setSearchQuery] = useState('');
   const [copiedAgentId, setCopiedAgentId] = useState<string | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState(false);
 
@@ -43,17 +35,6 @@ export function OverviewView() {
     () => agents.find((a) => a.status === 'Active') || agents[0] || null,
     [agents]
   );
-
-  const filteredAgents = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return agents;
-    return agents.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        a.businessName.toLowerCase().includes(q) ||
-        (a.websiteUrl || '').toLowerCase().includes(q)
-    );
-  }, [agents, searchQuery]);
 
   const handleCopyEmbed = async (
     e: React.MouseEvent,
@@ -85,90 +66,54 @@ export function OverviewView() {
   };
 
   return (
-    <div className="space-y-6 pb-16">
-      {/* Chatbots Heading + Quick Tutorial */}
-      <div className="space-y-5">
-        <div className="flex flex-wrap items-center gap-3.5">
-          <h1 className="font-display text-2xl font-bold tracking-[-0.025em] text-neutral-950 sm:text-[28px]">
+    <div className="space-y-8 pb-16">
+      {/* Header Row — Exact layout, font sizes, and colors from reference */}
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-display text-3xl font-bold tracking-tight text-gray-900">
             Chatbots
           </h1>
           <button
             type="button"
             onClick={() => setTutorialOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg border border-blue-200/90 bg-white px-3.5 py-1.5 text-[13.5px] font-medium text-blue-600 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50/70 whitespace-nowrap shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-100 whitespace-nowrap shrink-0"
           >
-            <TbPlayerPlay className="h-4 w-4 text-blue-600" />
-            Watch Quick Tutorial
+            <CirclePlay className="h-4 w-4 shrink-0" />
+            Watch Video Tutorial
           </button>
         </div>
 
-        {/* Full-Width Primary CTA */}
         <Link
           href="/create-chatbot"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-display text-sm font-semibold tracking-[-0.01em] text-white shadow-xs transition-colors duration-150 hover:bg-blue-700 whitespace-nowrap"
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:w-auto whitespace-nowrap shrink-0"
         >
-          <TbPlus className="h-4 w-4" />
+          <Plus className="h-4 w-4 shrink-0" />
           Create New Chatbot
         </Link>
       </div>
 
-      {/* Optional Filter Bar when user has multiple chatbots */}
-      {!isLoading && agents.length > 3 && (
-        <div className="flex items-center justify-between gap-3">
-          <div className="relative w-full sm:max-w-xs">
-            <TbSearch
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
-            />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search chatbots..."
-              className="w-full rounded-lg border border-neutral-200 bg-white py-2 pl-9 pr-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 focus:outline-none"
-            />
-          </div>
-          <span className="font-mono text-xs text-neutral-500 tabular-nums">
-            {filteredAgents.length} of {agents.length}
-          </span>
-        </div>
-      )}
-
-      {/* Chatbot Cards Area */}
+      {/* Horizontal Chatbot Cards Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-xl border border-neutral-200/90 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+              className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-6 py-5"
             >
-              <div className="flex items-start justify-between gap-3">
-                <Skeleton className="h-11 w-11 rounded-full" />
-                <Skeleton className="h-4 w-14" />
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <Skeleton className="h-5 w-28" />
               </div>
-              <Skeleton className="mt-4 h-5 w-36" />
-              <Skeleton className="mt-2 h-3.5 w-44" />
-              <div className="mt-5 flex items-center gap-6 border-t border-neutral-100 pt-4">
-                <Skeleton className="h-3.5 w-20" />
-                <Skeleton className="h-3.5 w-24" />
+              <div className="flex items-center gap-5">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
               </div>
             </div>
           ))}
         </div>
-      ) : agents.length === 0 ? (
-        <p className="pt-2 text-sm text-neutral-500">
-          Your chatbots will appear here once created. Click &ldquo;Create New Chatbot&rdquo; above to get started.
-        </p>
-      ) : filteredAgents.length === 0 ? (
-        <EmptyState
-          icon={TbRobot}
-          title="No chatbots match your search"
-          description="Try another chatbot name, business name, or website URL."
-          actionLabel="Clear Search"
-          onAction={() => setSearchQuery('')}
-        />
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredAgents.map((agent) => {
+      ) : agents.length === 0 ? null : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {agents.map((agent) => {
             const isCopied = copiedAgentId === agent.id;
 
             return (
@@ -183,70 +128,45 @@ export function OverviewView() {
                     router.push(`/agents/${agent.id}`);
                   }
                 }}
-                className="group flex cursor-pointer flex-col justify-between rounded-xl border border-neutral-200/90 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-150 hover:border-blue-300 hover:shadow-[0_6px_18px_-4px_rgba(37,99,235,0.12)]"
+                className="group flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-2xs transition-all duration-150 hover:border-gray-300 hover:shadow-sm cursor-pointer sm:flex-nowrap"
               >
-                <div>
-                  <div className="flex items-start justify-between gap-3">
-                    <CadenceOrbLauncherIcon className="h-11 w-11 shrink-0" />
-                    <span
-                      className={`inline-flex items-center gap-1.5 text-xs font-medium ${
-                        agent.status === 'Active'
-                          ? 'text-emerald-700'
-                          : agent.status === 'Draft'
-                            ? 'text-amber-700'
-                            : 'text-neutral-500'
-                      }`}
-                    >
-                      {agent.status === 'Active' ? (
-                        <TbCircleCheck className="h-3.5 w-3.5" />
-                      ) : agent.status === 'Draft' ? (
-                        <TbFilePencil className="h-3.5 w-3.5" />
-                      ) : (
-                        <TbPlayerPause className="h-3.5 w-3.5" />
-                      )}
-                      {agent.status}
-                    </span>
-                  </div>
-
-                  <h2 className="mt-4 truncate font-display text-[17px] font-semibold tracking-[-0.015em] text-neutral-950 transition-colors group-hover:text-blue-600">
+                <div className="flex min-w-0 items-center gap-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+                    <CadenceBotFaceIcon
+                      className="h-7 w-7 text-white"
+                      eyeStroke="#2563eb"
+                    />
+                  </span>
+                  <h2 className="truncate font-display text-base font-bold text-gray-900 transition-colors group-hover:text-blue-600">
                     {agent.name}
                   </h2>
-
-                  {(agent.websiteUrl || agent.businessName) && (
-                    <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-neutral-500">
-                      <TbWorld className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
-                      <span className="truncate font-mono text-[11.5px]">
-                        {agent.websiteUrl || agent.businessName}
-                      </span>
-                    </p>
-                  )}
                 </div>
 
-                <div className="mt-5 flex items-center gap-6 border-t border-neutral-100 pt-4">
+                <div className="flex shrink-0 items-center gap-5">
                   <Link
                     href={`/agents/${agent.id}/chat`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-600 transition-colors hover:text-blue-600 whitespace-nowrap"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 whitespace-nowrap"
                   >
-                    <TbMessage className="h-3.5 w-3.5" />
+                    <ExternalLink className="h-4 w-4 text-gray-500" />
                     Chat Now
                   </Link>
 
                   <button
                     type="button"
                     onClick={(e) => handleCopyEmbed(e, agent.id, agent.name)}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-600 transition-colors hover:text-blue-600 whitespace-nowrap"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 whitespace-nowrap"
                   >
                     {isCopied ? (
                       <>
-                        <TbCheck className="h-3.5 w-3.5 text-emerald-600" />
+                        <Check className="h-4 w-4 text-emerald-600" />
                         <span className="text-emerald-600">Copied</span>
                       </>
                     ) : (
                       <>
-                        <TbCopy className="h-3.5 w-3.5" />
+                        <Copy className="h-4 w-4 text-gray-500" />
                         Copy Embed
                       </>
                     )}
@@ -258,9 +178,13 @@ export function OverviewView() {
         </div>
       )}
 
-      {/* Installed Floating Orb Chatbot Preview */}
+      {/* Floating Bottom-Right Chatbot Launcher */}
       {!isLoading && featuredAgent && (
-        <FloatingChatbotLauncher key={featuredAgent.id} agent={featuredAgent} />
+        <FloatingChatbotLauncher
+          key={featuredAgent.id}
+          agent={featuredAgent}
+          variant="dark"
+        />
       )}
 
       {/* Quick Tutorial Modal */}
@@ -274,17 +198,17 @@ export function OverviewView() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg rounded-xl border border-neutral-200 bg-white p-6 shadow-xl"
+            className="w-full max-w-lg rounded-xl border border-gray-200 bg-white p-6 shadow-xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2
                   id="tutorial-dialog-title"
-                  className="font-display text-lg font-semibold tracking-[-0.015em] text-neutral-950"
+                  className="font-display text-lg font-semibold text-gray-950"
                 >
                   Quick Start: Launch Your Voice Chatbot
                 </h2>
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-gray-500">
                   Go from setup to a live website voice assistant in three steps.
                 </p>
               </div>
@@ -292,9 +216,9 @@ export function OverviewView() {
                 type="button"
                 onClick={() => setTutorialOpen(false)}
                 aria-label="Close tutorial"
-                className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
               >
-                <TbX className="h-4 w-4" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
@@ -304,10 +228,10 @@ export function OverviewView() {
                   1
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-neutral-900">
+                  <p className="text-sm font-medium text-gray-900">
                     Create a dedicated chatbot
                   </p>
-                  <p className="mt-0.5 text-xs text-neutral-500">
+                  <p className="mt-0.5 text-xs text-gray-500">
                     Enter your business website URL, system instructions, and preferred voice profile on the Create Chatbot page.
                   </p>
                 </div>
@@ -317,11 +241,11 @@ export function OverviewView() {
                   2
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-neutral-900">
+                  <p className="text-sm font-medium text-gray-900">
                     Train &amp; test inside its workspace
                   </p>
-                  <p className="mt-0.5 text-xs text-neutral-500">
-                    Click any chatbot card to open its dedicated workspace for Voice Playground, Knowledge Base, and Chat History &amp; Leads.
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    Click any chatbot card to open its workspace for Voice Playground, Knowledge Base, and Chat History &amp; Leads.
                   </p>
                 </div>
               </li>
@@ -330,21 +254,21 @@ export function OverviewView() {
                   3
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-neutral-900">
+                  <p className="text-sm font-medium text-gray-900">
                     Embed on your website
                   </p>
-                  <p className="mt-0.5 text-xs text-neutral-500">
+                  <p className="mt-0.5 text-xs text-gray-500">
                     Use Copy Embed on your chatbot card and paste the script before your site&apos;s closing &lt;/body&gt; tag.
                   </p>
                 </div>
               </li>
             </ol>
 
-            <div className="mt-6 flex items-center justify-end gap-2.5 border-t border-neutral-200 pt-4">
+            <div className="mt-6 flex items-center justify-end gap-2.5 border-t border-gray-200 pt-4">
               <button
                 type="button"
                 onClick={() => setTutorialOpen(false)}
-                className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
               >
                 Close
               </button>
@@ -354,7 +278,7 @@ export function OverviewView() {
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
               >
                 Create New Chatbot
-                <TbArrowRight className="h-3.5 w-3.5" />
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
