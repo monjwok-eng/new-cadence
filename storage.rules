@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/knowledge/{sourceId}/{fileName} {
+      allow read: if request.auth != null
+        && request.auth.token.email_verified == true;
+
+      allow create: if request.auth != null
+        && request.auth.token.email_verified == true
+        && workspaceId.matches('^[a-zA-Z0-9_\\-]+$')
+        && sourceId.matches('^[a-zA-Z0-9_\\-]+$')
+        && fileName.size() > 0
+        && fileName.size() <= 120
+        && request.resource.size > 0
+        && request.resource.size <= 10 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('application/pdf')
+          || request.resource.contentType.matches('text/plain')
+          || request.resource.contentType.matches('text/markdown')
+          || request.resource.contentType.matches('application/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document')
+          || fileName.matches('.*\\.(pdf|txt|md|docx)$')
+        )
+        && request.resource.metadata != null
+        && request.resource.metadata.uploadedBy == request.auth.uid
+        && request.resource.metadata.workspaceId == workspaceId;
+
+      allow delete: if request.auth != null
+        && request.auth.token.email_verified == true;
+    }
+  }
+}

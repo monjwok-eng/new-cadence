@@ -1,0 +1,420 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile with PII isolated to owner read/write.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "avatarUrl": { "type": "string", "maxLength": 500 },
+        "roleTitle": { "type": "string", "maxLength": 100 },
+        "onboardingCompleted": { "type": "boolean" },
+        "planSelected": { "type": "boolean" },
+        "selectedPlan": { "type": "string", "enum": ["Starter", "Growth", "Basic", "Business", "Enterprise"] },
+        "billingCycle": { "type": "string", "enum": ["monthly", "yearly"] },
+        "onboardingData": { "type": "object", "description": "User onboarding questionnaire and starter agent preferences." },
+        "enterpriseContact": { "type": "object", "description": "Enterprise contact request details submitted from pricing." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "fullName", "email", "createdAt", "updatedAt"]
+    },
+    "UserMembership": {
+      "title": "UserMembership",
+      "description": "Index of workspaces a user belongs to.",
+      "type": "object",
+      "properties": {
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "role": { "type": "string", "enum": ["owner", "admin", "member"] },
+        "workspaceName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["workspaceId", "userId", "role", "workspaceName", "createdAt"]
+    },
+    "Workspace": {
+      "title": "Workspace",
+      "description": "Multi-tenant organization workspace.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "industry": { "type": "string", "maxLength": 100 },
+        "timezone": { "type": "string", "maxLength": 80 },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "planName": { "type": "string", "enum": ["Starter", "Growth", "Basic", "Business", "Enterprise"] },
+        "subscriptionStatus": { "type": "string", "enum": ["active", "trialing", "past_due", "canceled"] },
+        "memberUids": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "ownerId", "planName", "subscriptionStatus", "memberUids", "createdAt", "updatedAt"]
+    },
+    "WorkspaceMember": {
+      "title": "WorkspaceMember",
+      "description": "Member or pending invite within a workspace.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "role": { "type": "string", "enum": ["owner", "admin", "member"] },
+        "status": { "type": "string", "enum": ["Active", "Pending Invite"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "memberUids", "userId", "fullName", "email", "role", "status", "createdAt", "updatedAt"]
+    },
+    "VoiceAgent": {
+      "title": "VoiceAgent",
+      "description": "Website AI voice chatbot configuration scoped to a workspace.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "createdBy": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "businessName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "personality": { "type": "string", "enum": ["Friendly", "Professional", "Casual"] },
+        "customInstructions": { "type": "string", "maxLength": 5000 },
+        "voiceId": { "type": "string", "maxLength": 80 },
+        "voiceLabel": { "type": "string", "maxLength": 120 },
+        "language": { "type": "string", "maxLength": 60 },
+        "status": { "type": "string", "enum": ["Active", "Draft", "Inactive"] },
+        "websiteUrl": { "type": "string", "maxLength": 1000 },
+        "welcomeMessage": { "type": "string", "maxLength": 500 },
+        "accentColor": { "type": "string", "maxLength": 20 },
+        "widgetPosition": { "type": "string", "enum": ["bottom-right", "bottom-left"] },
+        "widgetTheme": { "type": "string", "enum": ["light", "dark"] },
+        "launcherLabel": { "type": "string", "maxLength": 60 },
+        "leadCaptureEnabled": { "type": "boolean" },
+        "allowedDomains": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "memberUids", "createdBy", "name", "businessName", "description", "personality", "customInstructions", "voiceId", "voiceLabel", "language", "status", "createdAt", "updatedAt"]
+    },
+    "KnowledgeSource": {
+      "title": "KnowledgeSource",
+      "description": "Training website URL, uploaded document reference, or text snippet.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "createdBy": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "agentId": { "type": "string", "maxLength": 128 },
+        "sourceType": { "type": "string", "enum": ["website", "document", "text"] },
+        "sourceName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "sourceUrl": { "type": "string", "maxLength": 1000 },
+        "filePath": { "type": "string", "maxLength": 500 },
+        "fileSizeBytes": { "type": "number" },
+        "content": { "type": "string", "maxLength": 20000 },
+        "processingStatus": { "type": "string", "enum": ["queued", "crawling", "processing", "ready", "failed", "pending_milestone_3"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "memberUids", "createdBy", "agentId", "sourceType", "sourceName", "processingStatus", "createdAt", "updatedAt"]
+    },
+    "PhoneNumber": {
+      "title": "PhoneNumber",
+      "description": "Demo phone number record assigned to a workspace and optional agent.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "agentId": { "type": "string", "maxLength": 128 },
+        "phoneNumber": { "type": "string", "minLength": 4, "maxLength": 40 },
+        "country": { "type": "string", "maxLength": 60 },
+        "locality": { "type": "string", "maxLength": 120 },
+        "provider": { "type": "string", "maxLength": 60 },
+        "status": { "type": "string", "enum": ["connected_demo", "unassigned"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "memberUids", "phoneNumber", "country", "provider", "status", "createdAt", "updatedAt"]
+    },
+    "CallLog": {
+      "title": "CallLog",
+      "description": "Historical call log record for a workspace.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "agentId": { "type": "string", "maxLength": 128 },
+        "agentName": { "type": "string", "maxLength": 120 },
+        "phoneNumber": { "type": "string", "maxLength": 40 },
+        "callerName": { "type": "string", "maxLength": 120 },
+        "callDirection": { "type": "string", "enum": ["inbound", "outbound"] },
+        "callStatus": { "type": "string", "enum": ["completed", "missed", "voicemail", "lead_captured"] },
+        "durationSeconds": { "type": "number" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "endedAt": { "type": "string", "format": "date-time" },
+        "transcript": { "type": "string", "maxLength": 30000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "memberUids", "agentId", "agentName", "phoneNumber", "callDirection", "callStatus", "durationSeconds", "createdAt"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "Workspace subscription tier record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "planName": { "type": "string", "enum": ["Starter", "Growth", "Basic", "Business", "Enterprise"] },
+        "subscriptionStatus": { "type": "string", "enum": ["active", "trialing", "past_due", "canceled"] },
+        "billingProvider": { "type": "string", "maxLength": 60 },
+        "currentPeriodStart": { "type": "string", "format": "date-time" },
+        "currentPeriodEnd": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "memberUids", "planName", "subscriptionStatus", "billingProvider", "createdAt"]
+    },
+    "ApiKey": {
+      "title": "ApiKey",
+      "description": "Workspace API key metadata with masked prefix only.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "createdBy": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "maskedKey": { "type": "string", "minLength": 8, "maxLength": 80 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "memberUids", "createdBy", "name", "maskedKey", "createdAt"]
+    },
+    "VoiceSession": {
+      "title": "VoiceSession",
+      "description": "Real-time AI voice session record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "agentId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "provider": { "type": "string", "maxLength": 60 },
+        "sessionStatus": { "type": "string", "enum": ["active", "ended", "failed"] },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "endedAt": { "type": "string", "format": "date-time" },
+        "durationSeconds": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "memberUids", "agentId", "sessionStatus", "startedAt", "createdAt"]
+    },
+    "ConversationMessage": {
+      "title": "ConversationMessage",
+      "description": "Message transcript item within a voice session.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "sessionId": { "type": "string", "maxLength": 128 },
+        "agentId": { "type": "string", "maxLength": 128 },
+        "speaker": { "type": "string", "enum": ["user", "agent"] },
+        "content": { "type": "string", "maxLength": 10000 },
+        "timestamp": { "type": "string", "maxLength": 60 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "memberUids", "sessionId", "agentId", "speaker", "content", "createdAt"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "Captured website visitor lead linked to a voice chatbot and workspace.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberUids": { "type": "array" },
+        "agentId": { "type": "string", "maxLength": 128 },
+        "agentName": { "type": "string", "maxLength": 120 },
+        "visitorName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "visitorEmail": { "type": "string", "format": "email", "maxLength": 200 },
+        "visitorPhone": { "type": "string", "maxLength": 40 },
+        "company": { "type": "string", "maxLength": 120 },
+        "inquirySummary": { "type": "string", "maxLength": 2000 },
+        "sourcePageUrl": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["New", "Contacted", "Qualified"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "memberUids", "agentId", "agentName", "visitorName", "visitorEmail", "status", "createdAt", "updatedAt"]
+    },
+    "PublicWidget": {
+      "title": "PublicWidget",
+      "description": "Sanitized non-PII public configuration for an embeddable website voice chatbot.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "businessName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "personality": { "type": "string", "enum": ["Friendly", "Professional", "Casual"] },
+        "customInstructions": { "type": "string", "maxLength": 5000 },
+        "voiceId": { "type": "string", "maxLength": 80 },
+        "voiceLabel": { "type": "string", "maxLength": 120 },
+        "language": { "type": "string", "maxLength": 60 },
+        "status": { "type": "string", "enum": ["Active", "Draft", "Inactive"] },
+        "websiteUrl": { "type": "string", "maxLength": 1000 },
+        "welcomeMessage": { "type": "string", "maxLength": 500 },
+        "accentColor": { "type": "string", "maxLength": 20 },
+        "widgetPosition": { "type": "string", "enum": ["bottom-right", "bottom-left"] },
+        "widgetTheme": { "type": "string", "enum": ["light", "dark"] },
+        "launcherLabel": { "type": "string", "maxLength": 60 },
+        "leadCaptureEnabled": { "type": "boolean" },
+        "allowedDomains": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "name", "businessName", "personality", "customInstructions", "voiceId", "voiceLabel", "language", "status", "accentColor", "widgetPosition", "widgetTheme", "leadCaptureEnabled", "updatedAt"]
+    },
+    "PublicWidgetKnowledgeBundle": {
+      "title": "PublicWidgetKnowledgeBundle",
+      "description": "Bundled non-PII website and document knowledge snippets for public chatbot RAG.",
+      "type": "object",
+      "properties": {
+        "agentId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "chunksJson": { "type": "string", "maxLength": 80000 },
+        "sourceCount": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["agentId", "workspaceId", "chunksJson", "sourceCount", "updatedAt"]
+    },
+    "PublicWidgetLead": {
+      "title": "PublicWidgetLead",
+      "description": "Lead submitted by a website visitor via an active embedded chatbot widget.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "agentId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "agentName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "visitorName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "visitorEmail": { "type": "string", "format": "email", "maxLength": 200 },
+        "visitorPhone": { "type": "string", "maxLength": 40 },
+        "company": { "type": "string", "maxLength": 120 },
+        "inquirySummary": { "type": "string", "maxLength": 2000 },
+        "sourcePageUrl": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["New", "Contacted", "Qualified"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "workspaceOwnerId", "agentId", "agentName", "visitorName", "visitorEmail", "status", "createdAt", "updatedAt"]
+    },
+    "PublicWidgetTurn": {
+      "title": "PublicWidgetTurn",
+      "description": "Immutable conversation turn logged from an active embedded chatbot session.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "sessionId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceOwnerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "agentId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "agentName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "hostDomain": { "type": "string", "maxLength": 253 },
+        "userMessage": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "assistantReply": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "sessionId", "workspaceId", "workspaceOwnerId", "agentId", "agentName", "userMessage", "assistantReply", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile documents restricted to the profile owner."
+    },
+    "/users/{userId}/memberships/{workspaceId}": {
+      "schema": { "$ref": "#/entities/UserMembership" },
+      "description": "Per-user workspace membership index."
+    },
+    "/workspaces/{workspaceId}": {
+      "schema": { "$ref": "#/entities/Workspace" },
+      "description": "Organization workspaces isolated by memberUids and ownerId."
+    },
+    "/workspaces/{workspaceId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/WorkspaceMember" },
+      "description": "Workspace members and role assignments."
+    },
+    "/workspaces/{workspaceId}/voice_agents/{agentId}": {
+      "schema": { "$ref": "#/entities/VoiceAgent" },
+      "description": "Voice agent configurations belonging to a workspace."
+    },
+    "/workspaces/{workspaceId}/knowledge_sources/{sourceId}": {
+      "schema": { "$ref": "#/entities/KnowledgeSource" },
+      "description": "Training sources belonging to a workspace."
+    },
+    "/workspaces/{workspaceId}/phone_numbers/{phoneId}": {
+      "schema": { "$ref": "#/entities/PhoneNumber" },
+      "description": "Demo phone numbers belonging to a workspace."
+    },
+    "/workspaces/{workspaceId}/call_logs/{callId}": {
+      "schema": { "$ref": "#/entities/CallLog" },
+      "description": "Call logs belonging to a workspace."
+    },
+    "/workspaces/{workspaceId}/subscriptions/{subId}": {
+      "schema": { "$ref": "#/entities/Subscription" },
+      "description": "Subscription tier records belonging to a workspace."
+    },
+    "/workspaces/{workspaceId}/api_keys/{keyId}": {
+      "schema": { "$ref": "#/entities/ApiKey" },
+      "description": "Masked API key metadata belonging to a workspace."
+    },
+    "/workspaces/{workspaceId}/voice_sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/VoiceSession" },
+      "description": "Voice sessions belonging to a workspace."
+    },
+    "/workspaces/{workspaceId}/conversation_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ConversationMessage" },
+      "description": "Voice conversation messages belonging to a workspace."
+    },
+    "/workspaces/{workspaceId}/leads/{leadId}": {
+      "schema": { "$ref": "#/entities/Lead" },
+      "description": "Captured website visitor leads belonging to a workspace."
+    },
+    "/public_widgets/{agentId}": {
+      "schema": { "$ref": "#/entities/PublicWidget" },
+      "description": "Publicly readable non-PII widget configuration for active embedded chatbots."
+    },
+    "/public_widgets/{agentId}/knowledge/{docId}": {
+      "schema": { "$ref": "#/entities/PublicWidgetKnowledgeBundle" },
+      "description": "Bundled website and document snippets for an embedded chatbot."
+    },
+    "/public_widget_leads/{leadId}": {
+      "schema": { "$ref": "#/entities/PublicWidgetLead" },
+      "description": "Leads submitted from embedded widgets, readable and manageable strictly by verified workspace owners/members."
+    },
+    "/public_widget_turns/{turnId}": {
+      "schema": { "$ref": "#/entities/PublicWidgetTurn" },
+      "description": "Immutable conversation turns logged from embedded widget sessions, readable strictly by verified workspace owners/members."
+    }
+  }
+}

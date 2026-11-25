@@ -1,0 +1,775 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1 / Safety Net: Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidMemberList(arr) {
+      return arr is list && arr.size() >= 1 && arr.size() <= 50 && arr[0] is string && arr[0].size() <= 128;
+    }
+
+    function isValidDomainList(arr) {
+      return arr is list && arr.size() <= 20 && (arr.size() == 0 || (arr[0] is string && arr[0].size() <= 253));
+    }
+
+    function workspaceExists(workspaceId) {
+      return exists(/databases/$(database)/documents/workspaces/$(workspaceId));
+    }
+
+    function getWorkspace(workspaceId) {
+      return get(/databases/$(database)/documents/workspaces/$(workspaceId)).data;
+    }
+
+    function memberExists(workspaceId, uid) {
+      return exists(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(uid));
+    }
+
+    function getMember(workspaceId, uid) {
+      return get(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(uid)).data;
+    }
+
+    function isWorkspaceMember(workspaceId) {
+      return workspaceExists(workspaceId) && (
+        getWorkspace(workspaceId).ownerId == request.auth.uid ||
+        (memberExists(workspaceId, request.auth.uid) && getMember(workspaceId, request.auth.uid).status == 'Active')
+      );
+    }
+
+    function isWorkspaceAdminOrOwner(workspaceId) {
+      return workspaceExists(workspaceId) && (
+        getWorkspace(workspaceId).ownerId == request.auth.uid ||
+        (
+          memberExists(workspaceId, request.auth.uid) &&
+          getMember(workspaceId, request.auth.uid).status == 'Active' &&
+          getMember(workspaceId, request.auth.uid).role in ['owner', 'admin']
+        )
+      );
+    }
+
+    function publicWidgetExists(agentId) {
+      return exists(/databases/$(database)/documents/public_widgets/$(agentId));
+    }
+
+    function getPublicWidget(agentId) {
+      return get(/databases/$(database)/documents/public_widgets/$(agentId)).data;
+    }
+
+    function isValidStringList(arr, maxLen, maxItemLen) {
+      return arr is list && arr.size() <= maxLen && (arr.size() == 0 || (arr[0] is string && arr[0].size() <= maxItemLen));
+    }
+
+    function isValidOnboardingData(data) {
+      return data is map
+        && data.keys().hasOnly(['referralSource', 'companySize', 'websiteUrl', 'otherSourceSummary', 'agentRole', 'instructions', 'techStack', 'deployChannels'])
+        && (!('referralSource' in data) || (data.referralSource is string && data.referralSource.size() <= 120))
+        && (!('companySize' in data) || (data.companySize is string && data.companySize.size() <= 80))
+        && (!('websiteUrl' in data) || (data.websiteUrl is string && data.websiteUrl.size() <= 500))
+        && (!('otherSourceSummary' in data) || (data.otherSourceSummary is string && data.otherSourceSummary.size() <= 2000))
+        && (!('agentRole' in data) || (data.agentRole is string && data.agentRole.size() <= 100))
+        && (!('instructions' in data) || (data.instructions is string && data.instructions.size() <= 2500))
+        && (!('techStack' in data) || isValidStringList(data.techStack, 25, 80))
+        && (!('deployChannels' in data) || isValidStringList(data.deployChannels, 25, 80));
+    }
+
+    function isValidEnterpriseContact(data) {
+      return data is map
+        && data.keys().hasOnly(['company', 'notes', 'requestedAt'])
+        && (!('company' in data) || (data.company is string && data.company.size() <= 120))
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000))
+        && (!('requestedAt' in data) || (data.requestedAt is string && data.requestedAt.size() <= 80));
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['id', 'fullName', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'fullName', 'email', 'avatarUrl', 'roleTitle', 'onboardingCompleted', 'planSelected', 'selectedPlan', 'billingCycle', 'onboardingData', 'enterpriseContact', 'createdAt', 'updatedAt'])
+        && data.id == userId
+        && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 500))
+        && (!('roleTitle' in data) || (data.roleTitle is string && data.roleTitle.size() <= 100))
+        && (!('onboardingCompleted' in data) || data.onboardingCompleted is bool)
+        && (!('planSelected' in data) || data.planSelected is bool)
+        && (!('selectedPlan' in data) || data.selectedPlan in ['Starter', 'Growth', 'Basic', 'Business', 'Enterprise'])
+        && (!('billingCycle' in data) || data.billingCycle in ['monthly', 'yearly'])
+        && (!('onboardingData' in data) || isValidOnboardingData(data.onboardingData))
+        && (!('enterpriseContact' in data) || isValidEnterpriseContact(data.enterpriseContact))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMembership(data, userId, workspaceId) {
+      return data.keys().hasAll(['workspaceId', 'userId', 'role', 'workspaceName', 'createdAt'])
+        && data.keys().hasOnly(['workspaceId', 'userId', 'role', 'workspaceName', 'createdAt'])
+        && data.workspaceId == workspaceId
+        && data.userId == userId
+        && data.role in ['owner', 'admin', 'member']
+        && data.workspaceName is string && data.workspaceName.size() >= 1 && data.workspaceName.size() <= 120
+        && data.createdAt is timestamp;
+    }
+
+    function isValidWorkspace(data, workspaceId) {
+      return data.keys().hasAll(['id', 'name', 'ownerId', 'planName', 'subscriptionStatus', 'memberUids', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'industry', 'timezone', 'ownerId', 'planName', 'subscriptionStatus', 'memberUids', 'createdAt', 'updatedAt'])
+        && data.id == workspaceId
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && (!('industry' in data) || (data.industry is string && data.industry.size() <= 100))
+        && (!('timezone' in data) || (data.timezone is string && data.timezone.size() <= 80))
+        && isValidId(data.ownerId)
+        && data.planName in ['Starter', 'Growth', 'Basic', 'Business', 'Enterprise']
+        && data.subscriptionStatus in ['active', 'trialing', 'past_due', 'canceled']
+        && isValidMemberList(data.memberUids)
+        && data.ownerId in data.memberUids
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMember(data, workspaceId, memberId) {
+      return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'userId', 'fullName', 'email', 'role', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'userId', 'fullName', 'email', 'role', 'status', 'createdAt', 'updatedAt'])
+        && data.id == memberId
+        && data.workspaceId == workspaceId
+        && isValidId(data.workspaceOwnerId)
+        && isValidMemberList(data.memberUids)
+        && isValidId(data.userId)
+        && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.role in ['owner', 'admin', 'member']
+        && data.status in ['Active', 'Pending Invite']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidVoiceAgent(data, workspaceId, agentId) {
+      return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'createdBy', 'name', 'businessName', 'description', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'createdBy', 'name', 'businessName', 'description', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'websiteUrl', 'welcomeMessage', 'accentColor', 'widgetPosition', 'widgetTheme', 'launcherLabel', 'leadCaptureEnabled', 'allowedDomains', 'createdAt', 'updatedAt'])
+        && data.id == agentId
+        && data.workspaceId == workspaceId
+        && isValidId(data.workspaceOwnerId)
+        && isValidMemberList(data.memberUids)
+        && isValidId(data.createdBy)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.businessName is string && data.businessName.size() >= 1 && data.businessName.size() <= 120
+        && data.description is string && data.description.size() >= 1 && data.description.size() <= 1000
+        && data.personality in ['Friendly', 'Professional', 'Casual']
+        && data.customInstructions is string && data.customInstructions.size() <= 5000
+        && data.voiceId is string && data.voiceId.size() >= 1 && data.voiceId.size() <= 80
+        && data.voiceLabel is string && data.voiceLabel.size() >= 1 && data.voiceLabel.size() <= 120
+        && data.language is string && data.language.size() >= 1 && data.language.size() <= 60
+        && data.status in ['Active', 'Draft', 'Inactive']
+        && (!('websiteUrl' in data) || (data.websiteUrl is string && data.websiteUrl.size() <= 1000))
+        && (!('welcomeMessage' in data) || (data.welcomeMessage is string && data.welcomeMessage.size() <= 500))
+        && (!('accentColor' in data) || (data.accentColor is string && data.accentColor.size() <= 20))
+        && (!('widgetPosition' in data) || data.widgetPosition in ['bottom-right', 'bottom-left'])
+        && (!('widgetTheme' in data) || data.widgetTheme in ['light', 'dark'])
+        && (!('launcherLabel' in data) || (data.launcherLabel is string && data.launcherLabel.size() <= 60))
+        && (!('leadCaptureEnabled' in data) || data.leadCaptureEnabled is bool)
+        && (!('allowedDomains' in data) || isValidDomainList(data.allowedDomains))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidKnowledgeSource(data, workspaceId, sourceId) {
+      return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'createdBy', 'agentId', 'sourceType', 'sourceName', 'processingStatus', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'createdBy', 'agentId', 'sourceType', 'sourceName', 'sourceUrl', 'filePath', 'fileSizeBytes', 'content', 'processingStatus', 'createdAt', 'updatedAt'])
+        && data.id == sourceId
+        && data.workspaceId == workspaceId
+        && isValidId(data.workspaceOwnerId)
+        && isValidMemberList(data.memberUids)
+        && isValidId(data.createdBy)
+        && data.agentId is string && data.agentId.size() >= 1 && data.agentId.size() <= 128
+        && data.sourceType in ['website', 'document', 'text']
+        && data.sourceName is string && data.sourceName.size() >= 1 && data.sourceName.size() <= 200
+        && (!('sourceUrl' in data) || (data.sourceUrl is string && data.sourceUrl.size() <= 1000))
+        && (!('filePath' in data) || (data.filePath is string && data.filePath.size() <= 500))
+        && (!('fileSizeBytes' in data) || (data.fileSizeBytes is number && data.fileSizeBytes >= 0 && data.fileSizeBytes <= 10485760))
+        && (!('content' in data) || (data.content is string && data.content.size() <= 20000))
+        && data.processingStatus in ['queued', 'crawling', 'processing', 'ready', 'failed', 'pending_milestone_3']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidLead(data, workspaceId, leadId) {
+      return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'agentId', 'agentName', 'visitorName', 'visitorEmail', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'agentId', 'agentName', 'visitorName', 'visitorEmail', 'visitorPhone', 'company', 'inquirySummary', 'sourcePageUrl', 'status', 'createdAt', 'updatedAt'])
+        && data.id == leadId
+        && data.workspaceId == workspaceId
+        && isValidId(data.workspaceOwnerId)
+        && isValidMemberList(data.memberUids)
+        && isValidId(data.agentId)
+        && data.agentName is string && data.agentName.size() >= 1 && data.agentName.size() <= 120
+        && data.visitorName is string && data.visitorName.size() >= 1 && data.visitorName.size() <= 120
+        && data.visitorEmail is string && data.visitorEmail.size() >= 3 && data.visitorEmail.size() <= 200
+        && (!('visitorPhone' in data) || (data.visitorPhone is string && data.visitorPhone.size() <= 40))
+        && (!('company' in data) || (data.company is string && data.company.size() <= 120))
+        && (!('inquirySummary' in data) || (data.inquirySummary is string && data.inquirySummary.size() <= 2000))
+        && (!('sourcePageUrl' in data) || (data.sourcePageUrl is string && data.sourcePageUrl.size() <= 1000))
+        && data.status in ['New', 'Contacted', 'Qualified']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidVoiceSession(data, workspaceId, sessionId) {
+      return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'agentId', 'sessionStatus', 'startedAt', 'createdAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'agentId', 'userId', 'provider', 'sessionStatus', 'startedAt', 'endedAt', 'durationSeconds', 'createdAt'])
+        && data.id == sessionId
+        && data.workspaceId == workspaceId
+        && isValidId(data.workspaceOwnerId)
+        && isValidMemberList(data.memberUids)
+        && isValidId(data.agentId)
+        && (!('userId' in data) || (data.userId is string && data.userId.size() <= 128))
+        && (!('provider' in data) || (data.provider is string && data.provider.size() <= 60))
+        && data.sessionStatus in ['active', 'ended', 'failed']
+        && data.startedAt is string && data.startedAt.size() <= 80
+        && (!('endedAt' in data) || (data.endedAt is string && data.endedAt.size() <= 80))
+        && (!('durationSeconds' in data) || (data.durationSeconds is number && data.durationSeconds >= 0 && data.durationSeconds <= 86400))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidConversationMessage(data, workspaceId, messageId) {
+      return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'sessionId', 'agentId', 'speaker', 'content', 'createdAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'sessionId', 'agentId', 'speaker', 'content', 'timestamp', 'createdAt'])
+        && data.id == messageId
+        && data.workspaceId == workspaceId
+        && isValidId(data.workspaceOwnerId)
+        && isValidMemberList(data.memberUids)
+        && isValidId(data.sessionId)
+        && isValidId(data.agentId)
+        && data.speaker in ['user', 'agent']
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 10000
+        && (!('timestamp' in data) || (data.timestamp is string && data.timestamp.size() <= 60))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidPhoneNumber(data, workspaceId, phoneId) {
+      return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'phoneNumber', 'country', 'provider', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'agentId', 'phoneNumber', 'country', 'locality', 'provider', 'status', 'createdAt', 'updatedAt'])
+        && data.id == phoneId
+        && data.workspaceId == workspaceId
+        && isValidId(data.workspaceOwnerId)
+        && isValidMemberList(data.memberUids)
+        && (!('agentId' in data) || (data.agentId is string && data.agentId.size() <= 128))
+        && data.phoneNumber is string && data.phoneNumber.size() >= 4 && data.phoneNumber.size() <= 40
+        && data.country is string && data.country.size() >= 1 && data.country.size() <= 60
+        && (!('locality' in data) || (data.locality is string && data.locality.size() <= 120))
+        && data.provider is string && data.provider.size() >= 1 && data.provider.size() <= 60
+        && data.status in ['connected_demo', 'unassigned']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSubscription(data, workspaceId, subId) {
+      return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'planName', 'subscriptionStatus', 'billingProvider', 'currentPeriodStart', 'currentPeriodEnd', 'createdAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'planName', 'subscriptionStatus', 'billingProvider', 'currentPeriodStart', 'currentPeriodEnd', 'createdAt'])
+        && data.id == subId
+        && data.workspaceId == workspaceId
+        && isValidId(data.workspaceOwnerId)
+        && isValidMemberList(data.memberUids)
+        && data.planName in ['Starter', 'Growth', 'Basic', 'Business', 'Enterprise']
+        && data.subscriptionStatus in ['active', 'trialing', 'past_due', 'canceled']
+        && data.billingProvider is string && data.billingProvider.size() <= 60
+        && data.currentPeriodStart is timestamp
+        && data.currentPeriodEnd is timestamp
+        && data.createdAt is timestamp;
+    }
+
+    function isValidApiKey(data, workspaceId, keyId) {
+      return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'createdBy', 'name', 'maskedKey', 'createdAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'createdBy', 'name', 'maskedKey', 'createdAt'])
+        && data.id == keyId
+        && data.workspaceId == workspaceId
+        && isValidId(data.workspaceOwnerId)
+        && isValidMemberList(data.memberUids)
+        && isValidId(data.createdBy)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.maskedKey is string && data.maskedKey.size() >= 8 && data.maskedKey.size() <= 80
+        && data.createdAt is timestamp;
+    }
+
+    function isValidPublicWidget(data, agentId) {
+      return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'name', 'businessName', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'accentColor', 'widgetPosition', 'widgetTheme', 'leadCaptureEnabled', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'name', 'businessName', 'description', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'websiteUrl', 'welcomeMessage', 'accentColor', 'widgetPosition', 'widgetTheme', 'launcherLabel', 'leadCaptureEnabled', 'allowedDomains', 'updatedAt'])
+        && data.id == agentId
+        && isValidId(data.workspaceId)
+        && isValidId(data.workspaceOwnerId)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.businessName is string && data.businessName.size() >= 1 && data.businessName.size() <= 120
+        && (!('description' in data) || (data.description is string && data.description.size() <= 1000))
+        && data.personality in ['Friendly', 'Professional', 'Casual']
+        && data.customInstructions is string && data.customInstructions.size() <= 5000
+        && data.voiceId is string && data.voiceId.size() >= 1 && data.voiceId.size() <= 80
+        && data.voiceLabel is string && data.voiceLabel.size() >= 1 && data.voiceLabel.size() <= 120
+        && data.language is string && data.language.size() >= 1 && data.language.size() <= 60
+        && data.status in ['Active', 'Draft', 'Inactive']
+        && (!('websiteUrl' in data) || (data.websiteUrl is string && data.websiteUrl.size() <= 1000))
+        && (!('welcomeMessage' in data) || (data.welcomeMessage is string && data.welcomeMessage.size() <= 500))
+        && data.accentColor is string && data.accentColor.size() >= 3 && data.accentColor.size() <= 20
+        && data.widgetPosition in ['bottom-right', 'bottom-left']
+        && data.widgetTheme in ['light', 'dark']
+        && (!('launcherLabel' in data) || (data.launcherLabel is string && data.launcherLabel.size() <= 60))
+        && data.leadCaptureEnabled is bool
+        && (!('allowedDomains' in data) || isValidDomainList(data.allowedDomains))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublicKnowledgeBundle(data, agentId) {
+      return data.keys().hasAll(['agentId', 'workspaceId', 'chunksJson', 'sourceCount', 'updatedAt'])
+        && data.keys().hasOnly(['agentId', 'workspaceId', 'chunksJson', 'sourceCount', 'updatedAt'])
+        && data.agentId == agentId
+        && isValidId(data.workspaceId)
+        && data.chunksJson is string && data.chunksJson.size() <= 80000
+        && data.sourceCount is number && data.sourceCount >= 0 && data.sourceCount <= 500
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublicWidgetLead(data, leadId) {
+      return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'agentId', 'agentName', 'visitorName', 'visitorEmail', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'agentId', 'agentName', 'visitorName', 'visitorEmail', 'visitorPhone', 'company', 'inquirySummary', 'sourcePageUrl', 'status', 'createdAt', 'updatedAt'])
+        && data.id == leadId
+        && isValidId(data.workspaceId)
+        && isValidId(data.workspaceOwnerId)
+        && isValidId(data.agentId)
+        && data.agentName is string && data.agentName.size() >= 1 && data.agentName.size() <= 120
+        && data.visitorName is string && data.visitorName.size() >= 1 && data.visitorName.size() <= 120
+        && data.visitorEmail is string && data.visitorEmail.size() >= 3 && data.visitorEmail.size() <= 200
+        && (!('visitorPhone' in data) || (data.visitorPhone is string && data.visitorPhone.size() <= 40))
+        && (!('company' in data) || (data.company is string && data.company.size() <= 120))
+        && (!('inquirySummary' in data) || (data.inquirySummary is string && data.inquirySummary.size() <= 2000))
+        && (!('sourcePageUrl' in data) || (data.sourcePageUrl is string && data.sourcePageUrl.size() <= 1000))
+        && data.status in ['New', 'Contacted', 'Qualified']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublicWidgetTurn(data, turnId) {
+      return data.keys().hasAll(['id', 'sessionId', 'workspaceId', 'workspaceOwnerId', 'agentId', 'agentName', 'userMessage', 'assistantReply', 'createdAt'])
+        && data.keys().hasOnly(['id', 'sessionId', 'workspaceId', 'workspaceOwnerId', 'agentId', 'agentName', 'hostDomain', 'userMessage', 'assistantReply', 'createdAt'])
+        && data.id == turnId
+        && isValidId(data.sessionId)
+        && isValidId(data.workspaceId)
+        && isValidId(data.workspaceOwnerId)
+        && isValidId(data.agentId)
+        && data.agentName is string && data.agentName.size() >= 1 && data.agentName.size() <= 120
+        && (!('hostDomain' in data) || (data.hostDomain is string && data.hostDomain.size() <= 253))
+        && data.userMessage is string && data.userMessage.size() >= 1 && data.userMessage.size() <= 2000
+        && data.assistantReply is string && data.assistantReply.size() >= 1 && data.assistantReply.size() <= 4000
+        && data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+    match /users/{userId} {
+      allow get: if isVerified() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if isVerified() && isValidId(userId) && request.auth.uid == userId
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified() && isValidId(userId) && request.auth.uid == userId
+        && isValidUserProfile(incoming(), userId)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'email', 'roleTitle', 'avatarUrl', 'onboardingCompleted', 'planSelected', 'selectedPlan', 'billingCycle', 'onboardingData', 'enterpriseContact', 'updatedAt'])
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+
+      match /memberships/{workspaceId} {
+        allow list: if isVerified() && request.auth.uid == userId && existing().userId == request.auth.uid;
+        allow get: if isVerified() && isValidId(userId) && isValidId(workspaceId) && request.auth.uid == userId;
+        allow create: if isVerified() && isValidId(userId) && isValidId(workspaceId) && request.auth.uid == userId
+          && isValidMembership(incoming(), userId, workspaceId)
+          && incoming().createdAt == request.time
+          && existsAfter(/databases/$(database)/documents/workspaces/$(workspaceId));
+        allow update: if isVerified() && isValidId(userId) && isValidId(workspaceId) && request.auth.uid == userId
+          && isValidMembership(incoming(), userId, workspaceId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['workspaceName'])
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().userId == existing().userId
+          && incoming().role == existing().role
+          && incoming().createdAt == existing().createdAt;
+        allow delete: if isVerified() && isValidId(userId) && isValidId(workspaceId) && request.auth.uid == userId;
+      }
+    }
+
+    match /workspaces/{workspaceId} {
+      allow list: if isVerified() && (
+        existing().ownerId == request.auth.uid ||
+        request.auth.uid in existing().memberUids
+      );
+      allow get: if isVerified() && isValidId(workspaceId) && (
+        existing().ownerId == request.auth.uid ||
+        request.auth.uid in existing().memberUids
+      );
+      allow create: if isVerified() && isValidId(workspaceId)
+        && isValidWorkspace(incoming(), workspaceId)
+        && incoming().ownerId == request.auth.uid
+        && incoming().planName == 'Starter'
+        && incoming().subscriptionStatus == 'active'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && existsAfter(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid));
+      allow update: if isVerified() && isValidId(workspaceId)
+        && isValidWorkspace(incoming(), workspaceId)
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().memberUids == existing().memberUids
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (
+            isWorkspaceAdminOrOwner(workspaceId)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'industry', 'timezone', 'updatedAt'])
+            && incoming().planName == existing().planName
+            && incoming().subscriptionStatus == existing().subscriptionStatus
+          ) || (
+            existing().ownerId == request.auth.uid
+            && incoming().diff(existing()).affectedKeys().hasOnly(['planName', 'subscriptionStatus', 'updatedAt'])
+            && incoming().name == existing().name
+            && incoming().subscriptionStatus in ['active', 'trialing']
+          )
+        );
+      allow delete: if isVerified() && isValidId(workspaceId) && existing().ownerId == request.auth.uid;
+
+      match /members/{memberId} {
+        allow list: if isVerified() && (
+          existing().workspaceOwnerId == request.auth.uid ||
+          request.auth.uid in existing().memberUids
+        );
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(memberId) && isWorkspaceMember(workspaceId);
+        allow create: if isVerified() && isValidId(workspaceId) && isValidId(memberId)
+          && isValidMember(incoming(), workspaceId, memberId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && (
+            (
+              memberId == request.auth.uid
+              && incoming().userId == request.auth.uid
+              && incoming().role == 'owner'
+              && incoming().status == 'Active'
+              && incoming().workspaceOwnerId == request.auth.uid
+              && existsAfter(/databases/$(database)/documents/workspaces/$(workspaceId))
+            ) || (
+              isWorkspaceAdminOrOwner(workspaceId)
+              && incoming().role in ['admin', 'member']
+              && incoming().status == 'Pending Invite'
+              && incoming().workspaceOwnerId == getWorkspace(workspaceId).ownerId
+            )
+          );
+        allow update: if isVerified() && isValidId(workspaceId) && isValidId(memberId)
+          && isValidMember(incoming(), workspaceId, memberId)
+          && isWorkspaceAdminOrOwner(workspaceId)
+          && existing().role != 'owner'
+          && incoming().role in ['admin', 'member']
+          && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'updatedAt'])
+          && incoming().id == existing().id
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().workspaceOwnerId == existing().workspaceOwnerId
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time;
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(memberId)
+          && isWorkspaceAdminOrOwner(workspaceId)
+          && existing().role != 'owner';
+      }
+
+      match /voice_agents/{agentId} {
+        allow list: if isVerified() && (
+          existing().workspaceOwnerId == request.auth.uid ||
+          request.auth.uid in existing().memberUids
+        );
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(agentId) && isWorkspaceMember(workspaceId);
+        allow create: if isVerified() && isValidId(workspaceId) && isValidId(agentId)
+          && isValidVoiceAgent(incoming(), workspaceId, agentId)
+          && isWorkspaceMember(workspaceId)
+          && incoming().createdBy == request.auth.uid
+          && incoming().workspaceOwnerId == getWorkspace(workspaceId).ownerId
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified() && isValidId(workspaceId) && isValidId(agentId)
+          && isValidVoiceAgent(incoming(), workspaceId, agentId)
+          && isWorkspaceMember(workspaceId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'description', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'websiteUrl', 'welcomeMessage', 'accentColor', 'widgetPosition', 'widgetTheme', 'launcherLabel', 'leadCaptureEnabled', 'allowedDomains', 'updatedAt'])
+          && incoming().id == existing().id
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().workspaceOwnerId == existing().workspaceOwnerId
+          && incoming().createdBy == existing().createdBy
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time;
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(agentId) && isWorkspaceMember(workspaceId);
+      }
+
+      match /knowledge_sources/{sourceId} {
+        allow list: if isVerified() && (
+          existing().workspaceOwnerId == request.auth.uid ||
+          request.auth.uid in existing().memberUids
+        );
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(sourceId) && isWorkspaceMember(workspaceId);
+        allow create: if isVerified() && isValidId(workspaceId) && isValidId(sourceId)
+          && isValidKnowledgeSource(incoming(), workspaceId, sourceId)
+          && isWorkspaceMember(workspaceId)
+          && incoming().createdBy == request.auth.uid
+          && incoming().workspaceOwnerId == getWorkspace(workspaceId).ownerId
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified() && isValidId(workspaceId) && isValidId(sourceId)
+          && isValidKnowledgeSource(incoming(), workspaceId, sourceId)
+          && isWorkspaceMember(workspaceId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['sourceName', 'agentId', 'content', 'processingStatus', 'updatedAt'])
+          && incoming().id == existing().id
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().workspaceOwnerId == existing().workspaceOwnerId
+          && incoming().createdBy == existing().createdBy
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time;
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(sourceId) && isWorkspaceMember(workspaceId);
+      }
+
+      match /leads/{leadId} {
+        allow list: if isVerified() && (
+          existing().workspaceOwnerId == request.auth.uid ||
+          request.auth.uid in existing().memberUids
+        );
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(leadId) && isWorkspaceMember(workspaceId);
+        allow create: if isVerified() && isValidId(workspaceId) && isValidId(leadId)
+          && isValidLead(incoming(), workspaceId, leadId)
+          && isWorkspaceMember(workspaceId)
+          && incoming().workspaceOwnerId == getWorkspace(workspaceId).ownerId
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified() && isValidId(workspaceId) && isValidId(leadId)
+          && isValidLead(incoming(), workspaceId, leadId)
+          && isWorkspaceMember(workspaceId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'inquirySummary', 'visitorPhone', 'company', 'updatedAt'])
+          && incoming().id == existing().id
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().workspaceOwnerId == existing().workspaceOwnerId
+          && incoming().agentId == existing().agentId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time;
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(leadId) && isWorkspaceMember(workspaceId);
+      }
+
+      match /voice_sessions/{sessionId} {
+        allow list: if isVerified() && (
+          existing().workspaceOwnerId == request.auth.uid ||
+          request.auth.uid in existing().memberUids
+        );
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(sessionId) && isWorkspaceMember(workspaceId);
+        allow create: if isVerified() && isValidId(workspaceId) && isValidId(sessionId)
+          && isValidVoiceSession(incoming(), workspaceId, sessionId)
+          && isWorkspaceMember(workspaceId)
+          && incoming().workspaceOwnerId == getWorkspace(workspaceId).ownerId
+          && incoming().createdAt == request.time;
+        allow update: if isVerified() && isValidId(workspaceId) && isValidId(sessionId)
+          && isValidVoiceSession(incoming(), workspaceId, sessionId)
+          && isWorkspaceMember(workspaceId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['sessionStatus', 'endedAt', 'durationSeconds'])
+          && incoming().id == existing().id
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().workspaceOwnerId == existing().workspaceOwnerId
+          && incoming().createdAt == existing().createdAt;
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(sessionId) && isWorkspaceMember(workspaceId);
+      }
+
+      match /conversation_messages/{messageId} {
+        allow list: if isVerified() && (
+          existing().workspaceOwnerId == request.auth.uid ||
+          request.auth.uid in existing().memberUids
+        );
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(messageId) && isWorkspaceMember(workspaceId);
+        allow create: if isVerified() && isValidId(workspaceId) && isValidId(messageId)
+          && isValidConversationMessage(incoming(), workspaceId, messageId)
+          && isWorkspaceMember(workspaceId)
+          && incoming().workspaceOwnerId == getWorkspace(workspaceId).ownerId
+          && incoming().createdAt == request.time;
+        allow update: if isVerified() && isValidId(workspaceId) && isValidId(subId)
+          && subId == workspaceId
+          && isValidSubscription(incoming(), workspaceId, subId)
+          && existing().workspaceOwnerId == request.auth.uid
+          && incoming().diff(existing()).affectedKeys().hasOnly(['planName', 'subscriptionStatus', 'billingProvider', 'currentPeriodStart', 'currentPeriodEnd'])
+          && incoming().id == existing().id
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().workspaceOwnerId == existing().workspaceOwnerId
+          && incoming().memberUids == existing().memberUids
+          && incoming().createdAt == existing().createdAt
+          && incoming().subscriptionStatus in ['active', 'trialing']
+          && incoming().currentPeriodStart == request.time
+          && incoming().currentPeriodEnd == request.time;
+        allow delete: if false;
+      }
+
+      match /phone_numbers/{phoneId} {
+        allow list: if isVerified() && (
+          existing().workspaceOwnerId == request.auth.uid ||
+          request.auth.uid in existing().memberUids
+        );
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(phoneId) && isWorkspaceMember(workspaceId);
+        allow create: if isVerified() && isValidId(workspaceId) && isValidId(phoneId)
+          && isValidPhoneNumber(incoming(), workspaceId, phoneId)
+          && isWorkspaceAdminOrOwner(workspaceId)
+          && incoming().workspaceOwnerId == getWorkspace(workspaceId).ownerId
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified() && isValidId(workspaceId) && isValidId(phoneId)
+          && isValidPhoneNumber(incoming(), workspaceId, phoneId)
+          && isWorkspaceAdminOrOwner(workspaceId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['agentId', 'status', 'updatedAt'])
+          && incoming().id == existing().id
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().workspaceOwnerId == existing().workspaceOwnerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time;
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(phoneId) && isWorkspaceAdminOrOwner(workspaceId);
+      }
+
+      match /call_logs/{callId} {
+        allow list: if isVerified() && (
+          existing().workspaceOwnerId == request.auth.uid ||
+          request.auth.uid in existing().memberUids
+        );
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(callId) && isWorkspaceMember(workspaceId);
+        allow create, update, delete: if false;
+      }
+
+      match /subscriptions/{subId} {
+        allow list: if isVerified() && (
+          existing().workspaceOwnerId == request.auth.uid ||
+          request.auth.uid in existing().memberUids
+        );
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(subId) && isWorkspaceMember(workspaceId);
+        allow create: if isVerified() && isValidId(workspaceId) && isValidId(subId)
+          && subId == workspaceId
+          && isValidSubscription(incoming(), workspaceId, subId)
+          && incoming().workspaceOwnerId == request.auth.uid
+          && incoming().planName == 'Starter'
+          && incoming().subscriptionStatus == 'active'
+          && incoming().billingProvider == 'none'
+          && incoming().currentPeriodStart == request.time
+          && incoming().currentPeriodEnd == request.time
+          && incoming().createdAt == request.time
+          && existsAfter(/databases/$(database)/documents/workspaces/$(workspaceId));
+        allow update, delete: if false;
+      }
+
+      match /api_keys/{keyId} {
+        allow list: if isVerified() && (
+          existing().workspaceOwnerId == request.auth.uid ||
+          request.auth.uid in existing().memberUids
+        );
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(keyId) && isWorkspaceMember(workspaceId);
+        allow create: if isVerified() && isValidId(workspaceId) && isValidId(keyId)
+          && isValidApiKey(incoming(), workspaceId, keyId)
+          && isWorkspaceAdminOrOwner(workspaceId)
+          && incoming().createdBy == request.auth.uid
+          && incoming().workspaceOwnerId == getWorkspace(workspaceId).ownerId
+          && incoming().createdAt == request.time;
+        allow update: if false;
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(keyId) && isWorkspaceAdminOrOwner(workspaceId);
+      }
+    }
+
+    // --- Public Embeddable Widget Projection (Zero PII) ---
+    match /public_widgets/{agentId} {
+      allow list: if false;
+      allow get: if isValidId(agentId) && (
+        existing().status == 'Active' ||
+        (isVerified() && isWorkspaceMember(existing().workspaceId))
+      );
+      allow create: if isVerified() && isValidId(agentId)
+        && isValidPublicWidget(incoming(), agentId)
+        && isWorkspaceMember(incoming().workspaceId)
+        && incoming().workspaceOwnerId == getWorkspace(incoming().workspaceId).ownerId
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified() && isValidId(agentId)
+        && isValidPublicWidget(incoming(), agentId)
+        && isWorkspaceMember(existing().workspaceId)
+        && incoming().id == existing().id
+        && incoming().workspaceId == existing().workspaceId
+        && incoming().workspaceOwnerId == existing().workspaceOwnerId
+        && incoming().updatedAt == request.time;
+      allow delete: if isVerified() && isValidId(agentId)
+        && isWorkspaceMember(existing().workspaceId);
+
+      match /knowledge/{docId} {
+        allow list: if false;
+        allow get: if isValidId(agentId) && docId == 'bundle'
+          && publicWidgetExists(agentId)
+          && (
+            getPublicWidget(agentId).status == 'Active' ||
+            (isVerified() && isWorkspaceMember(getPublicWidget(agentId).workspaceId))
+          );
+        allow create, update: if isVerified() && isValidId(agentId) && docId == 'bundle'
+          && isValidPublicKnowledgeBundle(incoming(), agentId)
+          && isWorkspaceMember(incoming().workspaceId)
+          && incoming().updatedAt == request.time;
+        allow delete: if isVerified() && isValidId(agentId) && docId == 'bundle'
+          && publicWidgetExists(agentId)
+          && isWorkspaceMember(getPublicWidget(agentId).workspaceId);
+      }
+    }
+
+    // --- Public Widget Visitor Leads (Write-Only Public Drop-Box, Owner Read/Manage Only) ---
+    match /public_widget_leads/{leadId} {
+      allow list: if isVerified() && existing().workspaceOwnerId == request.auth.uid;
+      allow get: if isVerified() && isValidId(leadId) && isWorkspaceMember(existing().workspaceId);
+      allow create: if isValidId(leadId)
+        && isValidPublicWidgetLead(incoming(), leadId)
+        && publicWidgetExists(incoming().agentId)
+        && getPublicWidget(incoming().agentId).status == 'Active'
+        && getPublicWidget(incoming().agentId).leadCaptureEnabled == true
+        && getPublicWidget(incoming().agentId).workspaceId == incoming().workspaceId
+        && getPublicWidget(incoming().agentId).workspaceOwnerId == incoming().workspaceOwnerId
+        && incoming().status == 'New'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified() && isValidId(leadId)
+        && isValidPublicWidgetLead(incoming(), leadId)
+        && isWorkspaceMember(existing().workspaceId)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'inquirySummary', 'visitorPhone', 'company', 'updatedAt'])
+        && incoming().id == existing().id
+        && incoming().workspaceId == existing().workspaceId
+        && incoming().workspaceOwnerId == existing().workspaceOwnerId
+        && incoming().agentId == existing().agentId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isVerified() && isValidId(leadId) && isWorkspaceMember(existing().workspaceId);
+    }
+
+    // --- Public Widget Conversation Turns (Immutable Log, Owner Read Only) ---
+    match /public_widget_turns/{turnId} {
+      allow list: if isVerified() && existing().workspaceOwnerId == request.auth.uid;
+      allow get: if isVerified() && isValidId(turnId) && isWorkspaceMember(existing().workspaceId);
+      allow create: if isValidId(turnId)
+        && isValidPublicWidgetTurn(incoming(), turnId)
+        && publicWidgetExists(incoming().agentId)
+        && getPublicWidget(incoming().agentId).status == 'Active'
+        && getPublicWidget(incoming().agentId).workspaceId == incoming().workspaceId
+        && getPublicWidget(incoming().agentId).workspaceOwnerId == incoming().workspaceOwnerId
+        && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+  }
+}
