@@ -6,10 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertCircle,
   CheckCircle2,
-  Chrome,
   Eye,
   EyeOff,
 } from 'lucide-react';
+import { FcGoogle } from 'react-icons/fc';
 import { useApp } from '@/components/providers/app-provider';
 import { BrandLoader, BrandMark } from '@/components/ui/brand-loader';
 
@@ -284,7 +284,7 @@ function SignupForm() {
           disabled={googleSubmitting || submitting}
           className="flex h-[52px] w-full items-center justify-start gap-4 rounded-[2px] border border-[#c9c6c0] bg-white px-5 text-[15px] font-normal text-[#1c1714] transition-colors hover:bg-[#faf9f7] disabled:opacity-60"
         >
-          <Chrome className="h-[18px] w-[18px] shrink-0 text-[#1c1714]" />
+          <FcGoogle className="h-5 w-5 shrink-0" aria-hidden="true" />
           <span>{googleSubmitting ? 'Connecting...' : 'Continue with Google'}</span>
         </button>
 

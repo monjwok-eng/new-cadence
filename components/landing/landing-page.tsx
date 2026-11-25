@@ -357,7 +357,7 @@ export function LandingPage() {
             : 'border-transparent bg-transparent text-white'
         }`}
       >
-        <div className="mx-auto flex h-[70px] max-w-7xl items-center justify-between gap-8 px-5 sm:px-8 lg:px-12">
+        <div className="mx-auto flex h-[70px] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
           <Link
             href="/"
             className={`flex items-center gap-2.5 whitespace-nowrap shrink-0 transition-colors ${
@@ -376,11 +376,13 @@ export function LandingPage() {
 
           <nav
             aria-label="Landing navigation"
-            className="hidden items-center gap-8 md:flex"
+            className={`hidden md:ml-auto md:flex md:items-center md:gap-7 md:border-r md:pr-7 md:mr-7 transition-colors ${
+              isScrolled ? 'md:border-[#e5e2dc]' : 'md:border-white/25'
+            }`}
           >
             <a
               href="#platform"
-              className={`text-[15px] font-light transition-colors whitespace-nowrap shrink-0 ${
+              className={`text-[15px] font-normal tracking-[-0.01em] transition-colors whitespace-nowrap shrink-0 ${
                 isScrolled
                   ? 'text-[#14110f]/80 hover:text-[#14110f]'
                   : 'text-white/90 hover:text-white'
@@ -390,7 +392,7 @@ export function LandingPage() {
             </a>
             <a
               href="#difference"
-              className={`text-[15px] font-light transition-colors whitespace-nowrap shrink-0 ${
+              className={`text-[15px] font-normal tracking-[-0.01em] transition-colors whitespace-nowrap shrink-0 ${
                 isScrolled
                   ? 'text-[#14110f]/80 hover:text-[#14110f]'
                   : 'text-white/90 hover:text-white'
@@ -400,7 +402,7 @@ export function LandingPage() {
             </a>
             <a
               href="#results"
-              className={`text-[15px] font-light transition-colors whitespace-nowrap shrink-0 ${
+              className={`text-[15px] font-normal tracking-[-0.01em] transition-colors whitespace-nowrap shrink-0 ${
                 isScrolled
                   ? 'text-[#14110f]/80 hover:text-[#14110f]'
                   : 'text-white/90 hover:text-white'
@@ -410,7 +412,7 @@ export function LandingPage() {
             </a>
             <a
               href="#pricing"
-              className={`text-[15px] font-light transition-colors whitespace-nowrap shrink-0 ${
+              className={`text-[15px] font-normal tracking-[-0.01em] transition-colors whitespace-nowrap shrink-0 ${
                 isScrolled
                   ? 'text-[#14110f]/80 hover:text-[#14110f]'
                   : 'text-white/90 hover:text-white'
@@ -420,10 +422,10 @@ export function LandingPage() {
             </a>
           </nav>
 
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="ml-auto flex items-center gap-4 shrink-0 md:ml-0 md:gap-6">
             <Link
               href="/login"
-              className={`text-[15px] font-light transition-colors whitespace-nowrap shrink-0 ${
+              className={`text-[15px] font-normal tracking-[-0.01em] transition-colors whitespace-nowrap shrink-0 ${
                 isScrolled
                   ? 'text-[#14110f] hover:opacity-75'
                   : 'text-white/95 hover:text-white'
@@ -434,10 +436,10 @@ export function LandingPage() {
 
             <Link
               href="/signup"
-              className={`hidden sm:inline-flex items-center justify-center rounded-[6px] px-3.5 py-1.5 text-[14px] font-normal transition-colors duration-200 whitespace-nowrap shrink-0 ${
+              className={`hidden sm:inline-flex items-center justify-center rounded-[4px] px-4 py-2 text-[14.5px] font-normal tracking-[-0.01em] transition-colors duration-200 whitespace-nowrap shrink-0 ${
                 isScrolled
                   ? 'bg-[#14110f] text-white hover:bg-[#2d2622]'
-                  : 'bg-white/15 text-white hover:bg-white/25'
+                  : 'bg-white text-[#14110f] hover:bg-[#f3f1ed]'
               }`}
             >
               Sign up
@@ -447,20 +449,24 @@ export function LandingPage() {
               type="button"
               onClick={() => setMobileMenuOpen(true)}
               aria-label="Open menu"
-              className={`flex h-11 w-10 items-center justify-end transition-opacity hover:opacity-80 md:hidden ${
+              className={`flex h-10 w-10 items-center justify-end transition-opacity hover:opacity-80 md:hidden ${
                 isScrolled ? 'text-[#14110f]' : 'text-white'
               }`}
             >
               <svg
-                className="h-5 w-7"
-                viewBox="0 0 28 20"
+                width="32"
+                height="32"
+                viewBox="0 0 32 32"
                 fill="none"
-                xmlns="http://www.w3.org/2000/svg"
                 aria-hidden="true"
+                focusable="false"
+                className="h-8 w-8"
               >
-                <line x1="1" y1="3" x2="27" y2="3" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
-                <line x1="1" y1="10" x2="27" y2="10" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
-                <line x1="1" y1="17" x2="27" y2="17" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+                <path
+                  d="M2 10H30M2 16H30M2 22H30"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                />
               </svg>
             </button>
           </div>
