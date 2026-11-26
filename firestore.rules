@@ -166,7 +166,7 @@ service cloud.firestore {
 
     function isValidVoiceAgent(data, workspaceId, agentId) {
       return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'createdBy', 'name', 'businessName', 'description', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'createdBy', 'name', 'businessName', 'description', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'websiteUrl', 'welcomeMessage', 'accentColor', 'widgetPosition', 'widgetTheme', 'launcherLabel', 'leadCaptureEnabled', 'allowedDomains', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'memberUids', 'createdBy', 'name', 'businessName', 'description', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'websiteUrl', 'welcomeMessage', 'accentColor', 'widgetPosition', 'widgetTheme', 'launcherLabel', 'leadCaptureEnabled', 'allowedDomains', 'widgetConfigJson', 'createdAt', 'updatedAt'])
         && data.id == agentId
         && data.workspaceId == workspaceId
         && isValidId(data.workspaceOwnerId)
@@ -189,6 +189,7 @@ service cloud.firestore {
         && (!('launcherLabel' in data) || (data.launcherLabel is string && data.launcherLabel.size() <= 60))
         && (!('leadCaptureEnabled' in data) || data.leadCaptureEnabled is bool)
         && (!('allowedDomains' in data) || isValidDomainList(data.allowedDomains))
+        && (!('widgetConfigJson' in data) || (data.widgetConfigJson is string && data.widgetConfigJson.size() <= 4000))
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -312,7 +313,7 @@ service cloud.firestore {
 
     function isValidPublicWidget(data, agentId) {
       return data.keys().hasAll(['id', 'workspaceId', 'workspaceOwnerId', 'name', 'businessName', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'accentColor', 'widgetPosition', 'widgetTheme', 'leadCaptureEnabled', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'name', 'businessName', 'description', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'websiteUrl', 'welcomeMessage', 'accentColor', 'widgetPosition', 'widgetTheme', 'launcherLabel', 'leadCaptureEnabled', 'allowedDomains', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'workspaceId', 'workspaceOwnerId', 'name', 'businessName', 'description', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'websiteUrl', 'welcomeMessage', 'accentColor', 'widgetPosition', 'widgetTheme', 'launcherLabel', 'leadCaptureEnabled', 'allowedDomains', 'widgetConfigJson', 'updatedAt'])
         && data.id == agentId
         && isValidId(data.workspaceId)
         && isValidId(data.workspaceOwnerId)
@@ -333,6 +334,7 @@ service cloud.firestore {
         && (!('launcherLabel' in data) || (data.launcherLabel is string && data.launcherLabel.size() <= 60))
         && data.leadCaptureEnabled is bool
         && (!('allowedDomains' in data) || isValidDomainList(data.allowedDomains))
+        && (!('widgetConfigJson' in data) || (data.widgetConfigJson is string && data.widgetConfigJson.size() <= 4000))
         && data.updatedAt is timestamp;
     }
 
@@ -511,7 +513,7 @@ service cloud.firestore {
         allow update: if isVerified() && isValidId(workspaceId) && isValidId(agentId)
           && isValidVoiceAgent(incoming(), workspaceId, agentId)
           && isWorkspaceMember(workspaceId)
-          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'description', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'websiteUrl', 'welcomeMessage', 'accentColor', 'widgetPosition', 'widgetTheme', 'launcherLabel', 'leadCaptureEnabled', 'allowedDomains', 'updatedAt'])
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'businessName', 'description', 'personality', 'customInstructions', 'voiceId', 'voiceLabel', 'language', 'status', 'websiteUrl', 'welcomeMessage', 'accentColor', 'widgetPosition', 'widgetTheme', 'launcherLabel', 'leadCaptureEnabled', 'allowedDomains', 'widgetConfigJson', 'updatedAt'])
           && incoming().id == existing().id
           && incoming().workspaceId == existing().workspaceId
           && incoming().workspaceOwnerId == existing().workspaceOwnerId

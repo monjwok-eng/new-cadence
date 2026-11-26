@@ -137,7 +137,7 @@ function EmbedEditor({
     !window.location.hostname.includes('run.app') &&
     !window.location.hostname.includes('localhost')
       ? window.location.origin
-      : 'https://cadence-teal-eight.vercel.app';
+      : 'https://new-cadence-gamma.vercel.app';
 
   const id = selectedAgent.id || 'your_chatbot_id';
 

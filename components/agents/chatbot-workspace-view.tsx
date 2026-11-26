@@ -5,24 +5,30 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
+  BookOpen,
+  Calendar,
   Check,
   CheckCircle2,
   ChevronRight,
   CirclePause,
   Clock,
+  Code2,
+  Copy,
   FileEdit,
-  Files,
+  FileText,
   Globe,
+  Info,
   Link2,
   Menu,
   MessageSquare,
-  MessagesSquare,
   Pause,
+  PenLine,
   Play,
   Plus,
   Quote,
   Save,
   Sparkles,
+  ThumbsDown,
   ThumbsUp,
   Trash2,
   UserPlus,
@@ -48,11 +54,12 @@ import {
   TbSettings,
   TbSettingsFilled,
 } from 'react-icons/tb';
+import { PiPlugs, PiPlugsFill } from 'react-icons/pi';
 import { useApp } from '@/components/providers/app-provider';
-import { BrandMark } from '@/components/ui/brand-loader';
-import { AccountDropdown } from '@/components/layout/account-dropdown';
+import { HubHeaderBar } from '@/components/layout/hub-top-nav';
 import { CadenceOrbLauncherIcon } from '@/components/embed/cadence-orb';
 import { FloatingChatbotLauncher } from '@/components/embed/floating-chatbot-launcher';
+import { ChatbotIntegrationsView } from '@/components/agents/chatbot-integrations-view';
 import { KnowledgeBaseView } from '@/components/knowledge-base/knowledge-base-view';
 import { EmbedView } from '@/components/embed/embed-view';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -62,8 +69,13 @@ import { VOICE_OPTIONS } from '@/lib/demo-data';
 import {
   AgentPersonality,
   AgentStatus,
+  AutoOpenMode,
   CallOutcome,
   CallRecord,
+  ChatbotWidgetConfig,
+  IconPositionOption,
+  IconShapeOption,
+  IconSizeOption,
   LeadStatus,
   VoiceAgent,
   VoiceOption,
@@ -79,6 +91,7 @@ type WorkspaceTab =
   | 'text-snippets'
   | 'links'
   | 'files'
+  | 'integrations'
   | 'settings';
 
 const VALID_TABS: WorkspaceTab[] = [
@@ -91,6 +104,7 @@ const VALID_TABS: WorkspaceTab[] = [
   'text-snippets',
   'links',
   'files',
+  'integrations',
   'settings',
 ];
 
@@ -183,6 +197,8 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
+  const [copiedDashKey, setCopiedDashKey] = useState<'id' | 'embed' | null>(null);
+  const [pagesInfoOpen, setPagesInfoOpen] = useState(false);
 
   const agent = useMemo(
     () => agents.find((a) => a.id === agentId) || null,
@@ -222,11 +238,45 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
     [agentKnowledge]
   );
 
+  const pagesConsumed = useMemo(
+    () =>
+      agentKnowledge.reduce((sum, item) => {
+        const len = item.content?.trim().length || 0;
+        return sum + Math.max(1, Math.ceil(len / 2500));
+      }, 0),
+    [agentKnowledge]
+  );
+
   const avgDurationSec = useMemo(() => {
     if (agentCalls.length === 0) return 0;
     const total = agentCalls.reduce((acc, c) => acc + (c.durationSeconds || 0), 0);
     return Math.round(total / agentCalls.length);
   }, [agentCalls]);
+
+  const dashboardEmbedCode = useMemo(() => {
+    const id = agent?.id || agentId;
+    return `<script type="text/javascript">window.$cadence=[];(function(){d=document;s=d.createElement("script");s.src="https://new-cadence-gamma.vercel.app/widget/${id}.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();</script>`;
+  }, [agent?.id, agentId]);
+
+  const handleCopyDashboardValue = async (key: 'id' | 'embed', text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedDashKey(key);
+      pushToast({
+        title: key === 'id' ? 'Chatbot ID copied' : 'Embed code copied',
+        variant: 'success',
+      });
+      setTimeout(() => {
+        setCopiedDashKey((prev) => (prev === key ? null : prev));
+      }, 1800);
+    } catch {
+      pushToast({
+        title: 'Unable to copy',
+        description: 'Select the text and copy manually.',
+        variant: 'error',
+      });
+    }
+  };
 
   const handleSelectTab = (nextTab: WorkspaceTab) => {
     setMobileSidebarOpen(false);
@@ -514,6 +564,23 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
           <div className="space-y-0.5">
             <button
               type="button"
+              onClick={() => handleSelectTab('integrations')}
+              className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13.5px] transition-colors duration-150 whitespace-nowrap ${
+                activeTab === 'integrations'
+                  ? 'font-semibold text-blue-600'
+                  : 'font-medium text-neutral-700 hover:bg-neutral-50 hover:text-neutral-950'
+              }`}
+            >
+              {activeTab === 'integrations' ? (
+                <PiPlugsFill className="h-[19px] w-[19px] shrink-0 text-blue-600 transition-transform duration-150 group-hover:-rotate-6" />
+              ) : (
+                <PiPlugs className="h-[19px] w-[19px] shrink-0 text-neutral-500 transition-transform duration-150 group-hover:-rotate-6" />
+              )}
+              <span>Integrations</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => handleSelectTab('settings')}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13.5px] transition-colors duration-150 whitespace-nowrap ${
                 activeTab === 'settings'
@@ -536,9 +603,10 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
 
   return (
     <div className="min-h-screen bg-neutral-50/70 text-neutral-900">
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b border-neutral-200 bg-white px-4 sm:px-6">
-        <div className="flex items-center gap-3">
+      {/* Desktop-Responsive Hub Navbar (matches /dashboard) */}
+      <HubHeaderBar
+        zIndexClass="z-50"
+        leftMobileControl={
           <button
             type="button"
             onClick={() => setMobileSidebarOpen((prev) => !prev)}
@@ -560,31 +628,20 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
               <Menu className="h-5 w-5" strokeWidth={1.85} />
             )}
           </button>
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 text-neutral-950 whitespace-nowrap shrink-0"
-          >
-            <BrandMark className="h-7 w-7 text-blue-600" />
-            <span className="font-display text-[17px] font-bold tracking-[-0.02em]">
-              Cadence
-            </span>
-          </Link>
-        </div>
-
-        <AccountDropdown />
-      </header>
+        }
+      />
 
       <div className="flex">
         {/* Desktop Scoped Left Sidebar */}
         <aside className="hidden w-64 shrink-0 border-r border-neutral-200 bg-white lg:block">
-          <div className="sticky top-14 h-[calc(100vh-3.5rem)]">{SidebarNav}</div>
+          <div className="sticky top-16 h-[calc(100vh-4rem)]">{SidebarNav}</div>
         </aside>
 
-        {/* Mobile Slide-Over Sidebar Drawer (sits cleanly beneath the h-14 header) */}
+        {/* Mobile Slide-Over Sidebar Drawer (sits cleanly beneath the h-16 header) */}
         {mobileSidebarOpen && (
-          <div className="fixed inset-x-0 top-14 bottom-0 z-40 flex lg:hidden">
+          <div className="fixed inset-x-0 top-16 bottom-0 z-40 flex lg:hidden">
             <div
-              className="fixed inset-x-0 top-14 bottom-0 bg-neutral-950/35"
+              className="fixed inset-x-0 top-16 bottom-0 bg-neutral-950/35"
               onClick={() => setMobileSidebarOpen(false)}
             />
             <aside className="relative z-10 h-full w-72 max-w-[85vw] border-r border-neutral-200 bg-white shadow-xl">
@@ -594,38 +651,134 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
         )}
 
         {/* Main Workspace Content */}
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-8">
-          <div className="mx-auto max-w-4xl">
+        <main
+          className={
+            activeTab === 'dashboard' || activeTab === 'integrations'
+              ? 'min-w-0 flex-1 bg-white'
+              : 'min-w-0 flex-1 px-4 py-6 sm:px-8'
+          }
+        >
+          <div
+            className={
+              activeTab === 'dashboard' || activeTab === 'integrations'
+                ? activeTab === 'integrations'
+                  ? ''
+                  : 'px-4 py-6 sm:px-6 sm:py-8'
+                : 'mx-auto max-w-4xl'
+            }
+          >
             {isLoading && !agent ? (
               <div
                 role="status"
                 aria-label="Loading chatbot dashboard"
-                className="space-y-5 pb-14"
+                className="space-y-8 pb-16"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <Skeleton className="h-8 w-36" />
-                    <Skeleton className="mt-2 h-3.5 w-52" />
-                  </div>
+                {/* Header Skeleton */}
+                <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+                  <Skeleton className="h-9 w-40 rounded-lg" />
                   <Skeleton className="h-8 w-20 rounded-lg" />
                 </div>
 
-                <div className="space-y-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
+                {/* Metrics Grid Skeleton (3 action cards + 4 stat cards) */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
                     <div
-                      key={i}
-                      className="rounded-xl border border-neutral-200/90 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+                      key={`dash-skel-add-${i}`}
+                      className="rounded-xl border-2 border-dashed border-gray-200 bg-white p-6 shadow-sm"
                     >
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
-                        <Skeleton className="h-4 w-36" />
-                      </div>
-                      <div className="mt-4 flex items-center justify-between gap-4">
-                        <Skeleton className="h-8 w-10" />
-                        <Skeleton className="h-8 w-24 rounded-lg" />
+                      <div className="flex items-start gap-3">
+                        <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <Skeleton className="h-4 w-32" />
+                          <div className="flex items-center justify-between gap-4">
+                            <Skeleton className="h-9 w-10" />
+                            <Skeleton className="h-8 w-16 rounded-md" />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
+
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                      key={`dash-skel-stat-${i}`}
+                      className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <Skeleton className="h-4 w-32" />
+                          <div className="flex items-end justify-between gap-4">
+                            <Skeleton className="h-9 w-12" />
+                            <Skeleton className="h-5 w-28" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <Skeleton className="h-4 w-36" />
+                        <Skeleton className="h-9 w-12" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="border-gray-200" />
+
+                {/* Status & Preview Skeleton */}
+                <div className="space-y-4 sm:space-y-6">
+                  <Skeleton className="h-7 w-44 rounded-lg" />
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <Skeleton className="h-6 w-6 shrink-0 rounded-md" />
+                      <div className="w-full max-w-xl space-y-3">
+                        <Skeleton className="h-4 w-64" />
+                        <Skeleton className="h-4 w-full max-w-md" />
+                        <div className="flex flex-wrap items-center gap-3 pt-1">
+                          <Skeleton className="h-9 w-28 rounded-md" />
+                          <Skeleton className="h-9 w-28 rounded-md" />
+                          <Skeleton className="h-9 w-44 rounded-md" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="border-gray-200" />
+
+                {/* Installation Skeleton */}
+                <div className="space-y-4 sm:space-y-6">
+                  <Skeleton className="h-7 w-32 rounded-lg" />
+
+                  <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-6 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <Skeleton className="h-6 w-6 shrink-0 rounded-md" />
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <Skeleton className="h-5 w-28" />
+                        <Skeleton className="h-4 w-full max-w-lg" />
+                        <div className="flex items-center gap-2 pt-1">
+                          <Skeleton className="h-9 w-64 rounded-lg" />
+                          <Skeleton className="h-7 w-16 rounded-md" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-6 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <Skeleton className="h-6 w-6 shrink-0 rounded-md" />
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-4 w-full max-w-md" />
+                        <Skeleton className="h-20 w-full max-w-2xl rounded-lg" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : !agent ? (
@@ -648,215 +801,476 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
             ) : (
               <>
                 {activeTab === 'dashboard' && (
-                  <div className="space-y-5 pb-14">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="space-y-8 pb-16">
+                    {/* Header Row */}
+                    <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
                       <div>
-                        <h1 className="font-display text-2xl font-bold tracking-[-0.025em] text-neutral-950 sm:text-[28px]">
-                          Dashboard
-                        </h1>
-                        <p className="mt-1 text-xs text-neutral-500">
-                          {agent.name} · {agent.websiteUrl || agent.businessName}
-                        </p>
+                        <div className="inline-flex items-center gap-3">
+                          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                        </div>
                       </div>
                       <button
                         type="button"
                         disabled={cyclingStatus}
                         onClick={handleToggleStatus}
                         title="Toggle Active / Inactive"
-                        className="rounded-lg border border-neutral-200/90 bg-white px-2.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-colors hover:bg-neutral-50 disabled:opacity-50"
+                        className="self-start rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50 sm:self-auto"
                       >
                         <StatusDisplay status={agent.status} />
                       </button>
                     </div>
 
-                    <div className="space-y-4">
+                    {/* Metrics Grid */}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
                       {/* Total Links */}
-                      <div
-                        className={`rounded-xl bg-white p-5 transition-colors ${
+                      <button
+                        type="button"
+                        onClick={() => handleSelectTab('links')}
+                        className={`group text-left bg-white shadow-sm transition-all duration-150 rounded-xl ${
                           linksCount === 0
-                            ? 'border border-dashed border-blue-300/90'
-                            : 'border border-neutral-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                            ? 'border-2 border-dashed border-blue-200 hover:bg-blue-50/30 hover:shadow-md hover:border-blue-300'
+                            : 'border border-gray-200 hover:shadow-md'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                            <Link2 className="h-[18px] w-[18px]" strokeWidth={1.85} />
-                          </span>
-                          <span className="text-sm font-medium text-neutral-800">
-                            Total Links
-                          </span>
+                        <div className="p-6">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50">
+                              <Link2 className="h-5 w-5 text-blue-600" strokeWidth={2} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-gray-700 transition-colors duration-150 group-hover:text-gray-900">
+                                Total Links
+                              </p>
+                              <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+                                <p
+                                  className={`flex-1 text-3xl font-bold tabular-nums ${
+                                    linksCount === 0 ? 'text-gray-400' : 'text-gray-900'
+                                  }`}
+                                >
+                                  {linksCount}
+                                </p>
+                                {linksCount === 0 ? (
+                                  <div className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-blue-700 hover:shadow-sm">
+                                    <Plus className="h-4 w-4" strokeWidth={2.5} />
+                                    Add
+                                  </div>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-sm font-semibold leading-6 text-blue-600 transition-all duration-150 group-hover:gap-1.5 group-hover:text-blue-700">
+                                    View Links
+                                    <ChevronRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-4 flex items-center justify-between gap-4">
-                          <span
-                            className={`font-display text-[32px] leading-none font-bold tracking-[-0.03em] tabular-nums ${
-                              linksCount === 0 ? 'text-neutral-400' : 'text-neutral-950'
-                            }`}
-                          >
-                            {linksCount}
-                          </span>
-                          {linksCount === 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectTab('links')}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 whitespace-nowrap"
-                            >
-                              <Plus className="h-3.5 w-3.5" strokeWidth={2.2} />
-                              Add
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectTab('links')}
-                              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 whitespace-nowrap"
-                            >
-                              View All Links
-                              <ChevronRight className="h-4 w-4" strokeWidth={1.9} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                      </button>
 
                       {/* Total Files */}
-                      <div
-                        className={`rounded-xl bg-white p-5 transition-colors ${
+                      <button
+                        type="button"
+                        onClick={() => handleSelectTab('files')}
+                        className={`group text-left bg-white shadow-sm transition-all duration-150 rounded-xl ${
                           filesCount === 0
-                            ? 'border border-dashed border-blue-300/90'
-                            : 'border border-neutral-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                            ? 'border-2 border-dashed border-blue-200 hover:bg-blue-50/30 hover:shadow-md hover:border-blue-300'
+                            : 'border border-gray-200 hover:shadow-md'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                            <Files className="h-[18px] w-[18px]" strokeWidth={1.85} />
-                          </span>
-                          <span className="text-sm font-medium text-neutral-800">
-                            Total Files
-                          </span>
+                        <div className="p-6">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50">
+                              <FileText className="h-5 w-5 text-blue-600" strokeWidth={2} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-gray-700 transition-colors duration-150 group-hover:text-gray-900">
+                                Total Files
+                              </p>
+                              <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+                                <p
+                                  className={`flex-1 text-3xl font-bold tabular-nums ${
+                                    filesCount === 0 ? 'text-gray-400' : 'text-gray-900'
+                                  }`}
+                                >
+                                  {filesCount}
+                                </p>
+                                {filesCount === 0 ? (
+                                  <div className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-blue-700 hover:shadow-sm">
+                                    <Plus className="h-4 w-4" strokeWidth={2.5} />
+                                    Add
+                                  </div>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-sm font-semibold leading-6 text-blue-600 transition-all duration-150 group-hover:gap-1.5 group-hover:text-blue-700">
+                                    View Files
+                                    <ChevronRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-4 flex items-center justify-between gap-4">
-                          <span
-                            className={`font-display text-[32px] leading-none font-bold tracking-[-0.03em] tabular-nums ${
-                              filesCount === 0 ? 'text-neutral-400' : 'text-neutral-950'
-                            }`}
-                          >
-                            {filesCount}
-                          </span>
-                          {filesCount === 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectTab('files')}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 whitespace-nowrap"
-                            >
-                              <Plus className="h-3.5 w-3.5" strokeWidth={2.2} />
-                              Add
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectTab('files')}
-                              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 whitespace-nowrap"
-                            >
-                              View All Files
-                              <ChevronRight className="h-4 w-4" strokeWidth={1.9} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                      </button>
 
                       {/* Total Custom Responses */}
-                      <div
-                        className={`rounded-xl bg-white p-5 transition-colors ${
+                      <button
+                        type="button"
+                        onClick={() => handleSelectTab('custom-responses')}
+                        className={`group text-left bg-white shadow-sm transition-all duration-150 rounded-xl ${
                           customResponsesCount === 0
-                            ? 'border border-dashed border-blue-300/90'
-                            : 'border border-neutral-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                            ? 'border-2 border-dashed border-blue-200 hover:bg-blue-50/30 hover:shadow-md hover:border-blue-300'
+                            : 'border border-gray-200 hover:shadow-md'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                            <Quote className="h-[18px] w-[18px]" strokeWidth={1.85} />
-                          </span>
-                          <span className="text-sm font-medium text-neutral-800">
-                            Total Custom Responses
-                          </span>
+                        <div className="p-6">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50">
+                              <Quote className="h-5 w-5 text-blue-600" strokeWidth={2} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-gray-700 transition-colors duration-150 group-hover:text-gray-900">
+                                Total Custom Responses
+                              </p>
+                              <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+                                <p
+                                  className={`flex-1 text-3xl font-bold tabular-nums ${
+                                    customResponsesCount === 0
+                                      ? 'text-gray-400'
+                                      : 'text-gray-900'
+                                  }`}
+                                >
+                                  {customResponsesCount}
+                                </p>
+                                {customResponsesCount === 0 ? (
+                                  <div className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-blue-700 hover:shadow-sm">
+                                    <Plus className="h-4 w-4" strokeWidth={2.5} />
+                                    Add
+                                  </div>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-sm font-semibold leading-6 text-blue-600 transition-all duration-150 group-hover:gap-1.5 group-hover:text-blue-700">
+                                    View Responses
+                                    <ChevronRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-4 flex items-center justify-between gap-4">
-                          <span
-                            className={`font-display text-[32px] leading-none font-bold tracking-[-0.03em] tabular-nums ${
-                              customResponsesCount === 0
-                                ? 'text-neutral-400'
-                                : 'text-neutral-950'
-                            }`}
-                          >
-                            {customResponsesCount}
-                          </span>
-                          {customResponsesCount === 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectTab('custom-responses')}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 whitespace-nowrap"
-                            >
-                              <Plus className="h-3.5 w-3.5" strokeWidth={2.2} />
-                              Add
-                            </button>
+                      </button>
+
+                      {/* Total Messages */}
+                      <div className="group rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-150 hover:shadow-md">
+                        <div className="p-6">
+                          <div className="flex items-start gap-3">
+                            <Calendar className="h-8 w-8 shrink-0 text-blue-600" strokeWidth={1.9} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-gray-700 transition-colors duration-200 group-hover:text-gray-900">
+                                Total Messages
+                              </p>
+                              <div className="mt-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+                                <p className="flex-1 text-3xl font-bold text-gray-900 tabular-nums">
+                                  {agentCalls.length}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectTab('logs')}
+                                  className="inline-flex items-center gap-1 text-sm font-semibold leading-6 text-blue-600 transition-all duration-150 hover:gap-1.5 hover:text-blue-700"
+                                >
+                                  View Chat History
+                                  <ChevronRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Positive Feedback */}
+                      <div className="group rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-150 hover:shadow-md">
+                        <div className="p-6">
+                          <div className="flex items-start gap-3">
+                            <ThumbsUp className="h-8 w-8 shrink-0 text-green-600" strokeWidth={1.9} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-gray-700 transition-colors duration-200 group-hover:text-gray-900">
+                                Positive Feedback
+                              </p>
+                              <div className="mt-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+                                <p className="flex-1 text-3xl font-bold text-gray-900 tabular-nums">
+                                  0%
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectTab('logs')}
+                                  className="inline-flex items-center gap-1 text-sm font-semibold leading-6 text-blue-600 transition-all duration-150 hover:gap-1.5 hover:text-blue-700"
+                                >
+                                  View Feedback
+                                  <ChevronRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Negative Feedback */}
+                      <div className="group rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-150 hover:shadow-md">
+                        <div className="p-6">
+                          <div className="flex items-start gap-3">
+                            <ThumbsDown className="h-8 w-8 shrink-0 text-red-600" strokeWidth={1.9} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-gray-700 transition-colors duration-200 group-hover:text-gray-900">
+                                Negative Feedback
+                              </p>
+                              <div className="mt-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+                                <p className="flex-1 text-3xl font-bold text-gray-900 tabular-nums">
+                                  0%
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectTab('logs')}
+                                  className="inline-flex items-center gap-1 text-sm font-semibold leading-6 text-blue-600 transition-all duration-150 hover:gap-1.5 hover:text-blue-700"
+                                >
+                                  View Feedback
+                                  <ChevronRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Total Pages Consumed */}
+                      <div className="group rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-150 hover:shadow-md">
+                        <div className="p-6">
+                          <div className="flex items-start gap-3">
+                            <BookOpen className="h-8 w-8 shrink-0 text-blue-600" strokeWidth={1.9} />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-semibold text-gray-700 transition-colors duration-200 group-hover:text-gray-900">
+                                  Total Pages Consumed
+                                </p>
+                                <div
+                                  className="relative shrink-0"
+                                  onMouseEnter={() => setPagesInfoOpen(true)}
+                                  onMouseLeave={() => setPagesInfoOpen(false)}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => setPagesInfoOpen((prev) => !prev)}
+                                    onFocus={() => setPagesInfoOpen(true)}
+                                    onBlur={() => setPagesInfoOpen(false)}
+                                    aria-label="A page represents 2,500 cleaned characters of content from your sources. Each webpage, document, or content unit is divided into pages based on this measurement."
+                                    className="group/info cursor-pointer p-1"
+                                  >
+                                    <Info className="h-4 w-4 text-gray-400 group-hover/info:text-gray-600" />
+                                  </button>
+                                  {pagesInfoOpen && (
+                                    <div
+                                      role="tooltip"
+                                      className="absolute bottom-full left-0 z-30 mb-2 w-64 rounded-lg bg-gray-900 p-2.5 text-xs font-normal leading-relaxed text-white shadow-lg"
+                                    >
+                                      A page represents 2,500 cleaned characters of content from your sources. Each webpage, document, or content unit is divided into pages based on this measurement.
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="mt-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+                                <p className="flex-1 text-3xl font-bold text-gray-900 tabular-nums">
+                                  {pagesConsumed}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <hr className="border-gray-200" />
+
+                    {/* Status & Preview */}
+                    <div className="space-y-4 sm:space-y-6">
+                      <div className="inline-flex items-center gap-3">
+                        <h2 className="text-xl font-bold text-gray-900">
+                          Status &amp; Preview
+                        </h2>
+                      </div>
+
+                      <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm">
+                        <div className="p-6">
+                          {agentKnowledge.length === 0 ? (
+                            <div className="flex items-start gap-3">
+                              <PenLine className="h-6 w-6 shrink-0 text-gray-600" />
+                              <div className="max-w-xl">
+                                <p className="text-sm font-semibold text-gray-600">
+                                  Your chatbot doesn&apos;t know anything yet.
+                                </p>
+                                <p className="mt-1 text-sm font-normal text-gray-700">
+                                  Add links, files, or custom responses to train your chatbot and bring it to life!
+                                </p>
+                                <div className="mt-4 flex flex-wrap items-center gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSelectTab('links')}
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-600 px-3 py-1.5 text-sm font-semibold leading-6 text-gray-600 transition-all duration-150 hover:bg-gray-100 hover:text-gray-700"
+                                  >
+                                    <Plus className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
+                                    Add Links
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSelectTab('files')}
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-600 px-3 py-1.5 text-sm font-semibold leading-6 text-gray-600 transition-all duration-150 hover:bg-gray-100 hover:text-gray-700"
+                                  >
+                                    <Plus className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
+                                    Add Files
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSelectTab('custom-responses')}
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-600 px-3 py-1.5 text-sm font-semibold leading-6 text-gray-600 transition-all duration-150 hover:bg-gray-100 hover:text-gray-700"
+                                  >
+                                    <Plus className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
+                                    Add Custom Responses
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectTab('custom-responses')}
-                              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 whitespace-nowrap"
-                            >
-                              View Custom Responses
-                              <ChevronRight className="h-4 w-4" strokeWidth={1.9} />
-                            </button>
+                            <div className="flex items-start gap-3">
+                              <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-600" />
+                              <div className="max-w-xl">
+                                <p className="text-sm font-semibold text-gray-800">
+                                  {agent.name} is trained with {agentKnowledge.length}{' '}
+                                  knowledge source{agentKnowledge.length === 1 ? '' : 's'}.
+                                </p>
+                                <p className="mt-1 text-sm font-normal text-gray-600">
+                                  Your chatbot can answer questions from your indexed sources ({pagesConsumed} page{pagesConsumed === 1 ? '' : 's'}). Test it anytime using the floating chat bubble.
+                                </p>
+                                <div className="mt-4 flex flex-wrap items-center gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSelectTab('links')}
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-600 px-3 py-1.5 text-sm font-semibold leading-6 text-gray-600 transition-all duration-150 hover:bg-gray-100 hover:text-gray-700"
+                                  >
+                                    <Plus className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
+                                    Add Links
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSelectTab('files')}
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-600 px-3 py-1.5 text-sm font-semibold leading-6 text-gray-600 transition-all duration-150 hover:bg-gray-100 hover:text-gray-700"
+                                  >
+                                    <Plus className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
+                                    Add Files
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSelectTab('custom-responses')}
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-600 px-3 py-1.5 text-sm font-semibold leading-6 text-gray-600 transition-all duration-150 hover:bg-gray-100 hover:text-gray-700"
+                                  >
+                                    <Plus className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
+                                    Add Custom Responses
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>
+                    </div>
 
-                      {/* Total Messages */}
-                      <div className="rounded-xl border border-neutral-200/90 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                            <MessagesSquare className="h-[18px] w-[18px]" strokeWidth={1.85} />
-                          </span>
-                          <span className="text-sm font-medium text-neutral-800">
-                            Total Messages
-                          </span>
-                        </div>
-                        <div className="mt-4 flex items-center justify-between gap-4">
-                          <span className="font-display text-[32px] leading-none font-bold tracking-[-0.03em] text-neutral-950 tabular-nums">
-                            {agentCalls.length}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleSelectTab('logs')}
-                            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 whitespace-nowrap"
-                          >
-                            View Chat History
-                            <ChevronRight className="h-4 w-4" strokeWidth={1.9} />
-                          </button>
+                    <hr className="border-gray-200" />
+
+                    {/* Installation */}
+                    <div className="space-y-4 sm:space-y-6">
+                      <div className="inline-flex items-center gap-3">
+                        <h2 className="text-xl font-bold text-gray-900">
+                          Installation
+                        </h2>
+                      </div>
+
+                      {/* Chatbot ID */}
+                      <div className="rounded-xl border border-blue-200 bg-blue-50 shadow-sm">
+                        <div className="p-6">
+                          <div className="flex items-start gap-3">
+                            <Copy className="h-6 w-6 shrink-0 text-blue-600" />
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-base font-bold text-blue-900">
+                                Chatbot ID
+                              </h3>
+                              <p className="mt-1 text-sm font-normal text-blue-700">
+                                This is your unique chatbot identifier. Use this ID when integrating with third-party platforms like WordPress plugins.
+                              </p>
+                              <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <code className="select-all rounded-lg bg-blue-100 px-3 py-2 font-mono text-sm text-blue-800">
+                                  {agent.id}
+                                </code>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleCopyDashboardValue('id', agent.id)
+                                  }
+                                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-blue-600 transition-all duration-150 hover:bg-blue-100 hover:text-blue-500"
+                                >
+                                  {copiedDashKey === 'id' ? (
+                                    <>
+                                      <Check className="h-4 w-4" />
+                                      Copied
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="h-4 w-4" />
+                                      Copy
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Captured Leads */}
-                      <div className="rounded-xl border border-neutral-200/90 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                            <ThumbsUp className="h-[18px] w-[18px]" strokeWidth={1.85} />
-                          </span>
-                          <span className="text-sm font-medium text-neutral-800">
-                            Captured Leads
-                          </span>
-                        </div>
-                        <div className="mt-4 flex items-center justify-between gap-4">
-                          <span className="font-display text-[32px] leading-none font-bold tracking-[-0.03em] text-neutral-950 tabular-nums">
-                            {agentLeads.length}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleSelectTab('leads')}
-                            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 whitespace-nowrap"
-                          >
-                            View Leads
-                            <ChevronRight className="h-4 w-4" strokeWidth={1.9} />
-                          </button>
+                      {/* Embed Code */}
+                      <div className="rounded-xl border border-blue-200 bg-blue-50 shadow-sm">
+                        <div className="p-6">
+                          <div className="flex items-start gap-3">
+                            <Code2 className="h-6 w-6 shrink-0 text-blue-600" />
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-base font-bold text-blue-900">
+                                Embed Code
+                              </h3>
+                              <p className="mt-1 text-sm font-normal text-blue-700">
+                                Copy this code and paste it in your website&apos;s HTML to embed your chatbot.
+                              </p>
+                              <div className="mt-4">
+                                <div className="relative max-w-2xl rounded-lg bg-blue-100 p-3">
+                                  <code className="block select-all break-words pr-20 font-mono text-xs leading-relaxed text-blue-800">
+                                    {dashboardEmbedCode}
+                                  </code>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleCopyDashboardValue(
+                                        'embed',
+                                        dashboardEmbedCode
+                                      )
+                                    }
+                                    className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-blue-600 transition-all duration-150 hover:bg-blue-200 hover:text-blue-500"
+                                  >
+                                    {copiedDashKey === 'embed' ? (
+                                      <>
+                                        <Check className="h-4 w-4" />
+                                        Copied
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="h-4 w-4" />
+                                        Copy
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1174,6 +1588,10 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
                   </div>
                 )}
 
+                {activeTab === 'integrations' && (
+                  <ChatbotIntegrationsView agent={agent} />
+                )}
+
                 {activeTab === 'settings' && (
                   <div className="space-y-4">
                     <div>
@@ -1282,6 +1700,7 @@ function ChatbotSettingsForm({
   onRequestDelete: () => void;
 }) {
   const { updateAgent, pushToast } = useApp();
+  const initialCfg = agent.widgetConfig;
 
   const [name, setName] = useState(agent.name);
   const [businessName, setBusinessName] = useState(agent.businessName);
@@ -1295,6 +1714,102 @@ function ChatbotSettingsForm({
   );
   const [voiceId, setVoiceId] = useState(agent.voiceId);
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
+
+  // Widget & Chat Interface Settings (synced with Create Chatbot)
+  const [tooltip, setTooltip] = useState(initialCfg?.tooltip || '');
+  const [placeholderText, setPlaceholderText] = useState(
+    initialCfg?.placeholderText || ''
+  );
+  const [brandColor, setBrandColor] = useState(
+    initialCfg?.brandColor || agent.accentColor || '#000000'
+  );
+  const [brandTextColor, setBrandTextColor] = useState(
+    initialCfg?.brandTextColor || '#FFFFFF'
+  );
+  const [iconBackgroundColor, setIconBackgroundColor] = useState(
+    initialCfg?.iconBackgroundColor || ''
+  );
+  const [iconBackgroundTransparent, setIconBackgroundTransparent] = useState(
+    Boolean(initialCfg?.iconBackgroundTransparent)
+  );
+  const [linkColor, setLinkColor] = useState(initialCfg?.linkColor || '');
+  const [fontSize, setFontSize] = useState(
+    initialCfg?.fontSize ? String(initialCfg.fontSize) : '16'
+  );
+  const [height, setHeight] = useState(
+    initialCfg?.height ? String(initialCfg.height) : '85'
+  );
+  const [externalLinkUrl, setExternalLinkUrl] = useState(
+    initialCfg?.externalLinkUrl || ''
+  );
+  const [disclaimerText, setDisclaimerText] = useState(
+    initialCfg?.disclaimerText || ''
+  );
+  const [enableDarkMode, setEnableDarkMode] = useState(
+    Boolean(initialCfg?.enableDarkMode || agent.widgetTheme === 'dark')
+  );
+  const [hideSources, setHideSources] = useState(Boolean(initialCfg?.hideSources));
+  const [hideTooltip, setHideTooltip] = useState(Boolean(initialCfg?.hideTooltip));
+  const [hideFeedbackButtons, setHideFeedbackButtons] = useState(
+    Boolean(initialCfg?.hideFeedbackButtons)
+  );
+  const [hideBottomNavigation, setHideBottomNavigation] = useState(
+    Boolean(initialCfg?.hideBottomNavigation)
+  );
+  const [showMessagesTabForAnonymous, setShowMessagesTabForAnonymous] = useState(
+    Boolean(initialCfg?.showMessagesTabForAnonymous)
+  );
+  const [hideRefreshButton, setHideRefreshButton] = useState(
+    Boolean(initialCfg?.hideRefreshButton)
+  );
+  const [hideExpandButton, setHideExpandButton] = useState(
+    Boolean(initialCfg?.hideExpandButton)
+  );
+  const [hideHomePage, setHideHomePage] = useState(Boolean(initialCfg?.hideHomePage));
+  const [rtl, setRtl] = useState(Boolean(initialCfg?.rtl));
+  const [stayOnHomeIfNoThread, setStayOnHomeIfNoThread] = useState(
+    Boolean(initialCfg?.stayOnHomeIfNoThread)
+  );
+  const [requireTermsAcceptance, setRequireTermsAcceptance] = useState(
+    Boolean(initialCfg?.requireTermsAcceptance)
+  );
+  const [autoOpenChatWindowInDesktop, setAutoOpenChatWindowInDesktop] =
+    useState<AutoOpenMode>(initialCfg?.autoOpenChatWindowInDesktop || 'DONT_OPEN');
+  const [autoOpenChatWindowDelayInDesktop, setAutoOpenChatWindowDelayInDesktop] =
+    useState(
+      initialCfg?.autoOpenChatWindowDelayInDesktop !== undefined
+        ? String(initialCfg.autoOpenChatWindowDelayInDesktop)
+        : '5'
+    );
+  const [autoOpenChatWindowInMobile, setAutoOpenChatWindowInMobile] =
+    useState<AutoOpenMode>(initialCfg?.autoOpenChatWindowInMobile || 'DONT_OPEN');
+  const [autoOpenChatWindowDelayInMobile, setAutoOpenChatWindowDelayInMobile] =
+    useState(
+      initialCfg?.autoOpenChatWindowDelayInMobile !== undefined
+        ? String(initialCfg.autoOpenChatWindowDelayInMobile)
+        : '5'
+    );
+  const [distanceFromBottom, setDistanceFromBottom] = useState(
+    initialCfg?.distanceFromBottom !== undefined
+      ? String(initialCfg.distanceFromBottom)
+      : '16'
+  );
+  const [horizontalDistance, setHorizontalDistance] = useState(
+    initialCfg?.horizontalDistance !== undefined
+      ? String(initialCfg.horizontalDistance)
+      : '16'
+  );
+  const [iconSize, setIconSize] = useState<IconSizeOption>(
+    initialCfg?.iconSize || 'SMALL'
+  );
+  const [iconPosition, setIconPosition] = useState<IconPositionOption>(
+    initialCfg?.iconPosition ||
+      (agent.widgetPosition === 'bottom-left' ? 'LEFT' : 'RIGHT')
+  );
+  const [iconShape, setIconShape] = useState<IconShapeOption>(
+    initialCfg?.iconShape || 'CIRCLE'
+  );
+
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -1335,6 +1850,41 @@ function ChatbotSettingsForm({
     const selectedVoice =
       VOICE_OPTIONS.find((v) => v.id === voiceId) || VOICE_OPTIONS[0];
     const voiceLabel = `${selectedVoice.name} · ${selectedVoice.gender} · ${selectedVoice.language}`;
+    const updatedWidgetConfig: ChatbotWidgetConfig = {
+      ...initialCfg,
+      tooltip: tooltip.trim() || undefined,
+      placeholderText: placeholderText.trim() || undefined,
+      brandColor: brandColor.trim() || '#000000',
+      brandTextColor: brandTextColor.trim() || '#FFFFFF',
+      iconBackgroundColor: iconBackgroundColor.trim() || undefined,
+      iconBackgroundTransparent,
+      linkColor: linkColor.trim() || undefined,
+      fontSize: Number(fontSize) || 16,
+      height: Number(height) || 85,
+      externalLinkUrl: externalLinkUrl.trim() || undefined,
+      disclaimerText: disclaimerText.trim() || undefined,
+      enableDarkMode,
+      hideSources,
+      hideTooltip,
+      hideFeedbackButtons,
+      hideBottomNavigation,
+      showMessagesTabForAnonymous,
+      hideRefreshButton,
+      hideExpandButton,
+      hideHomePage,
+      rtl,
+      stayOnHomeIfNoThread,
+      requireTermsAcceptance,
+      autoOpenChatWindowInDesktop,
+      autoOpenChatWindowDelayInDesktop: Number(autoOpenChatWindowDelayInDesktop) || 5,
+      autoOpenChatWindowInMobile,
+      autoOpenChatWindowDelayInMobile: Number(autoOpenChatWindowDelayInMobile) || 5,
+      distanceFromBottom: Number(distanceFromBottom) || 16,
+      horizontalDistance: Number(horizontalDistance) || 16,
+      iconSize,
+      iconPosition,
+      iconShape,
+    };
 
     setSaving(true);
     try {
@@ -1352,6 +1902,10 @@ function ChatbotSettingsForm({
         voiceId: selectedVoice.id,
         voiceLabel,
         language: selectedVoice.language,
+        accentColor: (brandColor.trim() || '#000000').slice(0, 20),
+        widgetPosition: iconPosition === 'LEFT' ? 'bottom-left' : 'bottom-right',
+        widgetTheme: enableDarkMode ? 'dark' : 'light',
+        widgetConfig: updatedWidgetConfig,
       });
       pushToast({
         title: 'Chatbot settings saved',
@@ -1580,6 +2134,302 @@ function ChatbotSettingsForm({
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        <div className="border-t border-neutral-200 pt-6">
+          <h3 className="text-sm font-semibold text-neutral-900">
+            Chat Interface &amp; Widget Appearance
+          </h3>
+          <p className="mt-0.5 text-xs text-neutral-500">
+            Changes update the live chatbot launcher and chat window immediately.
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Primary Color
+              </label>
+              <input
+                type="text"
+                value={brandColor}
+                onChange={(e) => setBrandColor(e.target.value)}
+                placeholder="#000000"
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Text Color
+              </label>
+              <input
+                type="text"
+                value={brandTextColor}
+                onChange={(e) => setBrandTextColor(e.target.value)}
+                placeholder="#FFFFFF"
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Icon Background Color
+              </label>
+              <input
+                type="text"
+                value={iconBackgroundColor}
+                onChange={(e) => setIconBackgroundColor(e.target.value)}
+                placeholder="Leave empty to use primary color"
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Link Color
+              </label>
+              <input
+                type="text"
+                value={linkColor}
+                onChange={(e) => setLinkColor(e.target.value)}
+                placeholder="Leave empty to use primary color"
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Tooltip
+              </label>
+              <input
+                type="text"
+                value={tooltip}
+                onChange={(e) => setTooltip(e.target.value)}
+                placeholder="Hello! How can I assist you today?"
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Input Placeholder Text
+              </label>
+              <input
+                type="text"
+                value={placeholderText}
+                onChange={(e) => setPlaceholderText(e.target.value)}
+                placeholder="Ask me anything..."
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Font Size (in px)
+              </label>
+              <input
+                type="number"
+                value={fontSize}
+                onChange={(e) => setFontSize(e.target.value)}
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Chat Height (in %)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                External Link URL
+              </label>
+              <input
+                type="url"
+                value={externalLinkUrl}
+                onChange={(e) => setExternalLinkUrl(e.target.value)}
+                placeholder="https://mywebsite.com"
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Disclaimer Text
+              </label>
+              <input
+                type="text"
+                value={disclaimerText}
+                onChange={(e) => setDisclaimerText(e.target.value)}
+                placeholder="This AI is continuously learning..."
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Chat Icon Size
+              </label>
+              <select
+                value={iconSize}
+                onChange={(e) => setIconSize(e.target.value as IconSizeOption)}
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="SMALL">Small (48x48 px)</option>
+                <option value="MEDIUM">Medium (56x56 px)</option>
+                <option value="LARGE">Large (64x64 px)</option>
+                <option value="XL">XL (72x72 px)</option>
+                <option value="2XL">2XL (80x80 px)</option>
+                <option value="3XL">3XL (96x96 px)</option>
+                <option value="4XL">4XL (128x128 px)</option>
+                <option value="5XL">5XL (156x156 px)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Position
+              </label>
+              <select
+                value={iconPosition}
+                onChange={(e) => setIconPosition(e.target.value as IconPositionOption)}
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="RIGHT">Bottom - Right</option>
+                <option value="LEFT">Bottom - Left</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Icon Shape
+              </label>
+              <select
+                value={iconShape}
+                onChange={(e) => setIconShape(e.target.value as IconShapeOption)}
+                className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="CIRCLE">Circle</option>
+                <option value="SQUARE">Square</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Distance from Bottom / Horizontal (px)
+              </label>
+              <div className="mt-1.5 grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  value={distanceFromBottom}
+                  onChange={(e) => setDistanceFromBottom(e.target.value)}
+                  placeholder="Bottom (16)"
+                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+                />
+                <input
+                  type="number"
+                  value={horizontalDistance}
+                  onChange={(e) => setHorizontalDistance(e.target.value)}
+                  placeholder="Side (16)"
+                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Auto Open (Desktop)
+              </label>
+              <div className="mt-1.5 flex gap-2">
+                <select
+                  value={autoOpenChatWindowInDesktop}
+                  onChange={(e) =>
+                    setAutoOpenChatWindowInDesktop(e.target.value as AutoOpenMode)
+                  }
+                  className="flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="DONT_OPEN">Don&apos;t open</option>
+                  <option value="ALWAYS_OPEN_WITH_DELAY">After delay</option>
+                </select>
+                <input
+                  type="number"
+                  min={0}
+                  disabled={autoOpenChatWindowInDesktop === 'DONT_OPEN'}
+                  value={autoOpenChatWindowDelayInDesktop}
+                  onChange={(e) => setAutoOpenChatWindowDelayInDesktop(e.target.value)}
+                  className="w-20 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 disabled:opacity-50 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-800">
+                Auto Open (Mobile)
+              </label>
+              <div className="mt-1.5 flex gap-2">
+                <select
+                  value={autoOpenChatWindowInMobile}
+                  onChange={(e) =>
+                    setAutoOpenChatWindowInMobile(e.target.value as AutoOpenMode)
+                  }
+                  className="flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="DONT_OPEN">Don&apos;t open</option>
+                  <option value="ALWAYS_OPEN_WITH_DELAY">After delay</option>
+                </select>
+                <input
+                  type="number"
+                  min={0}
+                  disabled={autoOpenChatWindowInMobile === 'DONT_OPEN'}
+                  value={autoOpenChatWindowDelayInMobile}
+                  onChange={(e) => setAutoOpenChatWindowDelayInMobile(e.target.value)}
+                  className="w-20 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 disabled:opacity-50 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {(
+              [
+                ['Transparent Icon Background', iconBackgroundTransparent, setIconBackgroundTransparent],
+                ['Enable Dark Mode', enableDarkMode, setEnableDarkMode],
+                ['Hide Sources', hideSources, setHideSources],
+                ['Hide Tooltip', hideTooltip, setHideTooltip],
+                ['Hide Feedback Buttons', hideFeedbackButtons, setHideFeedbackButtons],
+                ['Hide Bottom Navigation', hideBottomNavigation, setHideBottomNavigation],
+                ['Anonymous History Tab', showMessagesTabForAnonymous, setShowMessagesTabForAnonymous],
+                ['Hide Refresh Button', hideRefreshButton, setHideRefreshButton],
+                ['Hide Expand Button', hideExpandButton, setHideExpandButton],
+                ['Hide Home Page', hideHomePage, setHideHomePage],
+                ['RTL Mode', rtl, setRtl],
+                ['Stay on Home Page', stayOnHomeIfNoThread, setStayOnHomeIfNoThread],
+                ['Require Terms Acceptance', requireTermsAcceptance, setRequireTermsAcceptance],
+              ] as [string, boolean, React.Dispatch<React.SetStateAction<boolean>>][]
+            ).map(([label, val, setter]) => (
+              <label
+                key={label}
+                className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2.5 text-xs font-medium text-neutral-800 hover:bg-neutral-50"
+              >
+                <span>{label}</span>
+                <input
+                  type="checkbox"
+                  checked={val}
+                  onChange={(e) => setter(e.target.checked)}
+                  className="h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                />
+              </label>
+            ))}
           </div>
         </div>
 

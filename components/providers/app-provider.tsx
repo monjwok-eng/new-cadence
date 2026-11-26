@@ -77,6 +77,7 @@ import {
   updateWorkspaceInDb,
   updateWorkspaceMemberRoleInDb,
   uploadKnowledgeDocumentInDb,
+  uploadUserAvatarInDb,
 } from '@/lib/services/workspace-service';
 import {
   AgentStatus,
@@ -140,6 +141,8 @@ interface AppContextValue {
     fullName: string;
     email: string;
     roleTitle: string;
+    avatarUrl?: string;
+    avatarFile?: File | null;
   }) => Promise<void>;
   saveOnboardingProgress: (
     data: OnboardingData,
@@ -721,12 +724,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateUser = useCallback(
-    async (updates: { fullName: string; email: string; roleTitle: string }) => {
+    async (updates: {
+      fullName: string;
+      email: string;
+      roleTitle: string;
+      avatarUrl?: string;
+      avatarFile?: File | null;
+    }) => {
       if (!firebaseUser) throw new Error('Authentication required.');
-      await updateUserProfileInDb(firebaseUser.uid, updates);
-      if (updates.fullName.trim()) {
-        await updateProfile(firebaseUser, { displayName: updates.fullName.trim() });
+      let nextAvatarUrl = updates.avatarUrl;
+      if (updates.avatarFile) {
+        nextAvatarUrl = await uploadUserAvatarInDb(
+          firebaseUser.uid,
+          updates.avatarFile
+        );
       }
+
+      await updateUserProfileInDb(firebaseUser.uid, {
+        fullName: updates.fullName,
+        email: updates.email,
+        roleTitle: updates.roleTitle,
+        avatarUrl: nextAvatarUrl,
+      });
+
+      const authUpdates: { displayName?: string; photoURL?: string } = {};
+      if (updates.fullName.trim()) {
+        authUpdates.displayName = updates.fullName.trim();
+      }
+      if (nextAvatarUrl) {
+        authUpdates.photoURL = nextAvatarUrl;
+      }
+      if (Object.keys(authUpdates).length > 0) {
+        await updateProfile(firebaseUser, authUpdates);
+      }
+
       setUser((prev) =>
         prev
           ? {
@@ -734,6 +765,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               fullName: updates.fullName.trim(),
               email: updates.email.trim(),
               roleTitle: updates.roleTitle.trim(),
+              avatarUrl: nextAvatarUrl ?? prev.avatarUrl,
               initials: updates.fullName
                 .trim()
                 .split(/\s+/)

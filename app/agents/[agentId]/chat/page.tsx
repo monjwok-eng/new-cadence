@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useApp } from '@/components/providers/app-provider';
-import { VoiceWidgetPopup } from '@/components/embed/voice-widget-popup';
+import { ChatbotPanel } from '@/components/embed/chatbot-panel';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StandaloneAgentChatPage() {
   const params = useParams();
   const agentId = params.agentId as string;
   const { isLoading, agents, knowledgeSources } = useApp();
+  const [expanded, setExpanded] = useState(false);
 
   const agent = useMemo(
     () => agents.find((a) => a.id === agentId) || null,
@@ -36,7 +37,7 @@ export default function StandaloneAgentChatPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-dvh w-full items-center justify-center bg-neutral-50 p-0 sm:p-6">
-        <Skeleton className="h-dvh w-full max-w-2xl bg-neutral-200/75 sm:h-[min(780px,92dvh)] sm:rounded-2xl" />
+        <Skeleton className="h-dvh w-full max-w-[440px] bg-neutral-200/75 sm:h-[85dvh] sm:rounded-2xl" />
       </div>
     );
   }
@@ -56,30 +57,49 @@ export default function StandaloneAgentChatPage() {
     );
   }
 
+  const wc = agent.widgetConfig;
+  const isDark = Boolean(wc?.enableDarkMode || agent.widgetTheme === 'dark');
+  const heightPercent =
+    typeof wc?.height === 'number' && Number.isFinite(wc.height) && wc.height > 0
+      ? Math.min(94, Math.max(40, wc.height))
+      : 85;
+
   return (
-    <div className="flex min-h-dvh w-full items-center justify-center bg-neutral-50 p-0 sm:p-6">
-      <div className="h-dvh w-full max-w-2xl overflow-hidden bg-white sm:h-[min(780px,92dvh)] sm:rounded-2xl sm:border sm:border-neutral-200 sm:shadow-[0_12px_36px_-8px_rgba(15,23,42,0.12)]">
-        <VoiceWidgetPopup
-          widget={{
+    <div
+      className={`flex min-h-dvh w-full items-center justify-center p-0 sm:p-6 ${
+        isDark ? 'bg-gray-950' : 'bg-neutral-50'
+      }`}
+    >
+      <div
+        style={{
+          '--chat-h': expanded ? '92dvh' : `${heightPercent}dvh`,
+        } as React.CSSProperties}
+        className={`h-dvh w-full overflow-hidden transition-[max-width,height] duration-200 sm:h-[var(--chat-h)] sm:rounded-2xl sm:border sm:shadow-[0_12px_36px_-8px_rgba(15,23,42,0.12)] ${
+          expanded ? 'sm:max-w-2xl' : 'sm:max-w-[440px]'
+        } ${
+          isDark
+            ? 'border-gray-800 bg-gray-900'
+            : 'border-gray-200 bg-white'
+        }`}
+      >
+        <ChatbotPanel
+          agent={{
             id: agent.id,
             name: agent.name,
             businessName: agent.businessName,
-            voiceId: agent.voiceId,
-            voiceLabel: agent.voiceLabel,
-            language: agent.language,
             welcomeMessage:
-              agent.welcomeMessage ||
-              `Hi! Ask me anything about ${agent.businessName}.`,
-            accentColor: agent.accentColor || '#2563eb',
-            widgetTheme: 'light',
-            launcherLabel: agent.launcherLabel || 'Talk with us',
-            leadCaptureEnabled: agent.leadCaptureEnabled ?? true,
+              agent.welcomeMessage || 'Hello! How can I assist you today?',
+            accentColor: agent.accentColor || '#000000',
+            widgetTheme: agent.widgetTheme,
             status: agent.status,
+            widgetConfig: agent.widgetConfig,
           }}
           hostDomain={
             typeof window !== 'undefined' ? window.location.hostname : ''
           }
           sourcePageUrl={agent.websiteUrl || ''}
+          expanded={expanded}
+          onToggleExpand={() => setExpanded((prev) => !prev)}
           fallbackInteractContext={{
             agentConfig: {
               name: agent.name,

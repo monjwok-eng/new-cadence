@@ -4,6 +4,55 @@ export type AgentPersonality = 'Friendly' | 'Professional' | 'Casual';
 
 export type WidgetPosition = 'bottom-right' | 'bottom-left';
 export type WidgetTheme = 'light' | 'dark';
+export type AutoOpenMode = 'DONT_OPEN' | 'ALWAYS_OPEN_WITH_DELAY';
+export type IconSizeOption =
+  | 'SMALL'
+  | 'MEDIUM'
+  | 'LARGE'
+  | 'XL'
+  | '2XL'
+  | '3XL'
+  | '4XL'
+  | '5XL';
+export type IconPositionOption = 'RIGHT' | 'LEFT';
+export type IconShapeOption = 'CIRCLE' | 'SQUARE';
+
+export interface ChatbotWidgetConfig {
+  tooltip?: string;
+  placeholderText?: string;
+  brandColor?: string;
+  brandTextColor?: string;
+  iconBackgroundColor?: string;
+  iconBackgroundTransparent?: boolean;
+  linkColor?: string;
+  fontSize?: number;
+  height?: number;
+  externalLinkUrl?: string;
+  hideSources?: boolean;
+  hideTooltip?: boolean;
+  hideFeedbackButtons?: boolean;
+  hideBottomNavigation?: boolean;
+  showMessagesTabForAnonymous?: boolean;
+  hideRefreshButton?: boolean;
+  hideExpandButton?: boolean;
+  hideHomePage?: boolean;
+  rtl?: boolean;
+  stayOnHomeIfNoThread?: boolean;
+  requireTermsAcceptance?: boolean;
+  disclaimerText?: string;
+  enableDarkMode?: boolean;
+  autoOpenChatWindowInDesktop?: AutoOpenMode;
+  autoOpenChatWindowDelayInDesktop?: number;
+  autoOpenChatWindowInMobile?: AutoOpenMode;
+  autoOpenChatWindowDelayInMobile?: number;
+  distanceFromBottom?: number;
+  distanceFromBottomInMobile?: number;
+  horizontalDistance?: number;
+  horizontalDistanceInMobile?: number;
+  iconSize?: IconSizeOption;
+  iconPosition?: IconPositionOption;
+  iconShape?: IconShapeOption;
+}
 
 export interface VoiceOption {
   id: string;
@@ -38,6 +87,7 @@ export interface VoiceAgent {
   launcherLabel?: string;
   leadCaptureEnabled?: boolean;
   allowedDomains?: string[];
+  widgetConfig?: ChatbotWidgetConfig;
   callsCount: number;
   avgDurationSec: number;
   leadsCaptured: number;
@@ -214,4 +264,5 @@ export interface PublicWidgetConfig {
   launcherLabel?: string;
   leadCaptureEnabled: boolean;
   allowedDomains?: string[];
+  widgetConfig?: ChatbotWidgetConfig;
 }

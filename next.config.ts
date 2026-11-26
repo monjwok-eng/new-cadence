@@ -26,6 +26,12 @@ export default function nextConfig(phase: string): NextConfig {
           port: '',
           pathname: '/**',
         },
+        {
+          protocol: 'https',
+          hostname: 'b-cdn.sitegpt.ai',
+          port: '',
+          pathname: '/**',
+        },
       ],
     },
     output: 'standalone',

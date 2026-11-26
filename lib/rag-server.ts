@@ -28,6 +28,17 @@ export async function fetchPublicWidgetConfig(
   const snap = await getDoc(doc(db, 'public_widgets', agentId));
   if (!snap.exists()) return null;
   const d = snap.data();
+  let widgetConfig: PublicWidgetConfig['widgetConfig'];
+  if (typeof d.widgetConfigJson === 'string' && d.widgetConfigJson.trim()) {
+    try {
+      const parsed = JSON.parse(d.widgetConfigJson);
+      if (parsed && typeof parsed === 'object') {
+        widgetConfig = parsed;
+      }
+    } catch {
+      widgetConfig = undefined;
+    }
+  }
   return {
     id: String(d.id || agentId),
     workspaceId: String(d.workspaceId || ''),
@@ -49,6 +60,7 @@ export async function fetchPublicWidgetConfig(
     launcherLabel: String(d.launcherLabel || 'Talk with us'),
     leadCaptureEnabled: Boolean(d.leadCaptureEnabled),
     allowedDomains: Array.isArray(d.allowedDomains) ? d.allowedDomains : [],
+    widgetConfig,
   };
 }
 

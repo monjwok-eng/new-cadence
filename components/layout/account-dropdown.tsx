@@ -108,7 +108,7 @@ export function AccountDropdown({
                 Usage
               </Link>
               <Link
-                href="/settings"
+                href="/profile"
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
               >
@@ -117,6 +117,8 @@ export function AccountDropdown({
               </Link>
               <Link
                 href="/docs"
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
               >

@@ -61,6 +61,8 @@ export async function GET(
           widgetTheme: widget.widgetTheme || 'light',
           launcherLabel: widget.launcherLabel || 'Talk with us',
           leadCaptureEnabled: Boolean(widget.leadCaptureEnabled),
+          status: widget.status,
+          widgetConfig: widget.widgetConfig,
         },
       },
       {

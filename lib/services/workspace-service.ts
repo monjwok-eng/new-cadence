@@ -13,7 +13,7 @@ import {
   writeBatch,
   setDoc,
 } from 'firebase/firestore';
-import { deleteObject, ref, uploadBytes } from 'firebase/storage';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { User } from 'firebase/auth';
 import { db, storage } from '@/lib/firebase';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-errors';
@@ -23,6 +23,7 @@ import {
   ApiKeyItem,
   BillingCycle,
   CallRecord,
+  ChatbotWidgetConfig,
   KnowledgeSource,
   Lead,
   LeadStatus,
@@ -38,6 +39,104 @@ import {
   Workspace,
   WorkspaceRole,
 } from '@/lib/types';
+
+function serializeWidgetConfig(config?: ChatbotWidgetConfig): string {
+  if (!config) return '';
+  const clean: ChatbotWidgetConfig = {
+    tooltip: config.tooltip ? sanitizeText(config.tooltip, 400) : undefined,
+    placeholderText: config.placeholderText
+      ? sanitizeText(config.placeholderText, 120)
+      : undefined,
+    brandColor: config.brandColor ? sanitizeText(config.brandColor, 20) : undefined,
+    brandTextColor: config.brandTextColor
+      ? sanitizeText(config.brandTextColor, 20)
+      : undefined,
+    iconBackgroundColor: config.iconBackgroundColor
+      ? sanitizeText(config.iconBackgroundColor, 20)
+      : undefined,
+    iconBackgroundTransparent: Boolean(config.iconBackgroundTransparent),
+    linkColor: config.linkColor ? sanitizeText(config.linkColor, 20) : undefined,
+    fontSize:
+      typeof config.fontSize === 'number' && Number.isFinite(config.fontSize)
+        ? Math.min(28, Math.max(10, Math.round(config.fontSize)))
+        : undefined,
+    height:
+      typeof config.height === 'number' && Number.isFinite(config.height)
+        ? Math.min(100, Math.max(20, Math.round(config.height)))
+        : undefined,
+    externalLinkUrl: config.externalLinkUrl
+      ? sanitizeText(config.externalLinkUrl, 400)
+      : undefined,
+    hideSources: Boolean(config.hideSources),
+    hideTooltip: Boolean(config.hideTooltip),
+    hideFeedbackButtons: Boolean(config.hideFeedbackButtons),
+    hideBottomNavigation: Boolean(config.hideBottomNavigation),
+    showMessagesTabForAnonymous: Boolean(config.showMessagesTabForAnonymous),
+    hideRefreshButton: Boolean(config.hideRefreshButton),
+    hideExpandButton: Boolean(config.hideExpandButton),
+    hideHomePage: Boolean(config.hideHomePage),
+    rtl: Boolean(config.rtl),
+    stayOnHomeIfNoThread: Boolean(config.stayOnHomeIfNoThread),
+    requireTermsAcceptance: Boolean(config.requireTermsAcceptance),
+    disclaimerText: config.disclaimerText
+      ? sanitizeText(config.disclaimerText, 500)
+      : undefined,
+    enableDarkMode: Boolean(config.enableDarkMode),
+    autoOpenChatWindowInDesktop:
+      config.autoOpenChatWindowInDesktop === 'ALWAYS_OPEN_WITH_DELAY'
+        ? 'ALWAYS_OPEN_WITH_DELAY'
+        : 'DONT_OPEN',
+    autoOpenChatWindowDelayInDesktop:
+      typeof config.autoOpenChatWindowDelayInDesktop === 'number' &&
+      Number.isFinite(config.autoOpenChatWindowDelayInDesktop)
+        ? Math.max(0, Math.min(300, Math.round(config.autoOpenChatWindowDelayInDesktop)))
+        : 5,
+    autoOpenChatWindowInMobile:
+      config.autoOpenChatWindowInMobile === 'ALWAYS_OPEN_WITH_DELAY'
+        ? 'ALWAYS_OPEN_WITH_DELAY'
+        : 'DONT_OPEN',
+    autoOpenChatWindowDelayInMobile:
+      typeof config.autoOpenChatWindowDelayInMobile === 'number' &&
+      Number.isFinite(config.autoOpenChatWindowDelayInMobile)
+        ? Math.max(0, Math.min(300, Math.round(config.autoOpenChatWindowDelayInMobile)))
+        : 5,
+    distanceFromBottom:
+      typeof config.distanceFromBottom === 'number' &&
+      Number.isFinite(config.distanceFromBottom)
+        ? Math.max(0, Math.min(200, Math.round(config.distanceFromBottom)))
+        : 16,
+    distanceFromBottomInMobile:
+      typeof config.distanceFromBottomInMobile === 'number' &&
+      Number.isFinite(config.distanceFromBottomInMobile)
+        ? Math.max(0, Math.min(200, Math.round(config.distanceFromBottomInMobile)))
+        : undefined,
+    horizontalDistance:
+      typeof config.horizontalDistance === 'number' &&
+      Number.isFinite(config.horizontalDistance)
+        ? Math.max(0, Math.min(200, Math.round(config.horizontalDistance)))
+        : 16,
+    horizontalDistanceInMobile:
+      typeof config.horizontalDistanceInMobile === 'number' &&
+      Number.isFinite(config.horizontalDistanceInMobile)
+        ? Math.max(0, Math.min(200, Math.round(config.horizontalDistanceInMobile)))
+        : undefined,
+    iconSize: config.iconSize || 'SMALL',
+    iconPosition: config.iconPosition === 'LEFT' ? 'LEFT' : 'RIGHT',
+    iconShape: config.iconShape === 'SQUARE' ? 'SQUARE' : 'CIRCLE',
+  };
+  const json = JSON.stringify(clean);
+  return json.length <= 4000 ? json : '';
+}
+
+function parseWidgetConfig(raw: unknown): ChatbotWidgetConfig | undefined {
+  if (typeof raw !== 'string' || !raw.trim()) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as ChatbotWidgetConfig;
+    return parsed && typeof parsed === 'object' ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_MIME_TYPES = new Set([
@@ -309,6 +408,7 @@ export function subscribeWorkspaceAgents(
           allowedDomains: Array.isArray(data.allowedDomains)
             ? data.allowedDomains.slice(0, 20)
             : [],
+          widgetConfig: parseWidgetConfig(data.widgetConfigJson),
           callsCount: 0,
           avgDurationSec: 0,
           leadsCaptured: 0,
@@ -800,18 +900,45 @@ export async function updateWorkspaceInDb(
   }
 }
 
+export async function uploadUserAvatarInDb(
+  uid: string,
+  file: File
+): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Please choose a valid image file for your avatar.');
+  }
+  if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
+    throw new Error('Avatar image must be smaller than 5 MB.');
+  }
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+  const storageRef = ref(storage, `users/${uid}/avatar/${Date.now()}_${safeName}`);
+  await uploadBytes(storageRef, file, {
+    contentType: file.type,
+    customMetadata: { uploadedBy: uid },
+  });
+  const url = await getDownloadURL(storageRef);
+  return sanitizeText(url, 500);
+}
+
 export async function updateUserProfileInDb(
   uid: string,
-  updates: { fullName: string; email: string; roleTitle: string }
+  updates: { fullName: string; email: string; roleTitle: string; avatarUrl?: string }
 ) {
   const path = `users/${uid}`;
+  const payload: Record<string, unknown> = {
+    fullName: sanitizeText(updates.fullName, 120),
+    email: sanitizeText(updates.email, 200),
+    roleTitle: sanitizeText(updates.roleTitle, 100),
+    updatedAt: serverTimestamp(),
+  };
+  if (typeof updates.avatarUrl === 'string' && updates.avatarUrl.trim()) {
+    const cleanAvatar = sanitizeText(updates.avatarUrl, 500);
+    if (cleanAvatar.length <= 500) {
+      payload.avatarUrl = cleanAvatar;
+    }
+  }
   try {
-    await updateDoc(doc(db, path), {
-      fullName: sanitizeText(updates.fullName, 120),
-      email: sanitizeText(updates.email, 200),
-      roleTitle: sanitizeText(updates.roleTitle, 100),
-      updatedAt: serverTimestamp(),
-    });
+    await updateDoc(doc(db, path), payload);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -929,11 +1056,13 @@ export async function createVoiceAgentInDb(
     launcherLabel?: string;
     leadCaptureEnabled?: boolean;
     allowedDomains?: string[];
+    widgetConfig?: ChatbotWidgetConfig;
   }
 ) {
   const agentId = generateId('agent');
   const path = `workspaces/${workspace.id}/voice_agents/${agentId}`;
   const now = serverTimestamp();
+  const serializedWidgetConfig = serializeWidgetConfig(input.widgetConfig);
 
   const payload: Record<string, unknown> = {
     id: agentId,
@@ -971,6 +1100,9 @@ export async function createVoiceAgentInDb(
     createdAt: now,
     updatedAt: now,
   };
+  if (serializedWidgetConfig) {
+    payload.widgetConfigJson = serializedWidgetConfig;
+  }
 
   try {
     await setDoc(doc(db, path), payload);
@@ -992,6 +1124,7 @@ export async function createVoiceAgentInDb(
       launcherLabel: String(payload.launcherLabel || 'Talk with us'),
       leadCaptureEnabled: Boolean(payload.leadCaptureEnabled),
       allowedDomains: (payload.allowedDomains as string[]) || [],
+      widgetConfig: input.widgetConfig,
     });
     return agentId;
   } catch (error) {
@@ -1021,8 +1154,10 @@ export async function syncPublicWidgetDoc(
     launcherLabel?: string;
     leadCaptureEnabled?: boolean;
     allowedDomains?: string[];
+    widgetConfig?: ChatbotWidgetConfig;
   }
 ) {
+  const serializedWidgetConfig = serializeWidgetConfig(input.widgetConfig);
   const widgetPayload: Record<string, unknown> = {
     id: agentId,
     workspaceId,
@@ -1055,6 +1190,9 @@ export async function syncPublicWidgetDoc(
       : [],
     updatedAt: serverTimestamp(),
   };
+  if (serializedWidgetConfig) {
+    widgetPayload.widgetConfigJson = serializedWidgetConfig;
+  }
 
   try {
     await setDoc(doc(db, 'public_widgets', agentId), widgetPayload);
@@ -1126,6 +1264,7 @@ export async function updateVoiceAgentInDb(
     launcherLabel: string;
     leadCaptureEnabled: boolean;
     allowedDomains: string[];
+    widgetConfig: ChatbotWidgetConfig;
   }>
 ) {
   const path = `workspaces/${workspaceId}/voice_agents/${agentId}`;
@@ -1175,6 +1314,12 @@ export async function updateVoiceAgentInDb(
       .filter(Boolean)
       .slice(0, 20);
   }
+  if (updates.widgetConfig !== undefined) {
+    const serialized = serializeWidgetConfig(updates.widgetConfig);
+    if (serialized) {
+      payload.widgetConfigJson = serialized;
+    }
+  }
 
   try {
     await updateDoc(doc(db, path), payload);
@@ -1200,6 +1345,7 @@ export async function updateVoiceAgentInDb(
         leadCaptureEnabled:
           typeof full.leadCaptureEnabled === 'boolean' ? full.leadCaptureEnabled : true,
         allowedDomains: Array.isArray(full.allowedDomains) ? full.allowedDomains : [],
+        widgetConfig: parseWidgetConfig(full.widgetConfigJson),
       });
     }
   } catch (error) {

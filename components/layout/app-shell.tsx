@@ -67,7 +67,7 @@ const HUB_NAV_ITEMS: HubNavItem[] = [
   { type: 'link', href: '/agents', label: 'Agents', icon: PiRobotDuotone },
   { type: 'link', href: '/pricing', label: 'Billing', icon: PiCreditCardDuotone },
   { type: 'link', href: '/analytics', label: 'Usage', icon: PiGaugeDuotone },
-  { type: 'link', href: '/settings', label: 'Profile', icon: PiUserCircleDuotone },
+  { type: 'link', href: '/profile', label: 'Profile', icon: PiUserCircleDuotone },
   { type: 'link', href: '/docs', label: 'Docs', icon: PiScrollDuotone },
   { type: 'action', action: 'support', label: 'Support', icon: PiChatCenteredTextFill },
   { type: 'action', action: 'feedback', label: 'Feedback', icon: PiChatTextFill },
@@ -81,6 +81,7 @@ const PUBLIC_ROUTES = [
   '/reset-password',
   '/embed/widget',
   '/pricing',
+  '/docs',
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -272,7 +273,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <ErrorBoundary>{children}</ErrorBoundary>;
   }
 
-  const isHubRoute = pathname === '/dashboard' || pathname === '/create-chatbot';
+  const isHubRoute =
+    pathname === '/dashboard' ||
+    pathname === '/create-chatbot' ||
+    pathname === '/profile';
   const isChatbotWorkspaceRoute =
     pathname.startsWith('/agents/') && pathname !== '/agents';
 
@@ -336,6 +340,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
+              target={item.href === '/docs' ? '_blank' : undefined}
+              rel={item.href === '/docs' ? 'noopener noreferrer' : undefined}
               onClick={() => setMobileMenuOpen(false)}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
                 active
@@ -399,14 +405,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ) : isHubRoute ? (
         <div className="flex min-h-screen flex-col bg-white text-gray-900">
           <header className="sticky top-0 z-30 shrink-0 border-b border-gray-200 bg-white">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="mx-auto max-w-[86rem] px-4 sm:px-6">
               <div className="flex h-16 items-center justify-between gap-4">
                 <Link
                   href="/dashboard"
-                  className="mr-auto flex shrink-0 items-center gap-2 text-gray-950 whitespace-nowrap lg:mx-0"
+                  className="mr-auto flex shrink-0 items-center gap-2 text-gray-950 whitespace-nowrap lg:mx-0 lg:-ml-2 lg:gap-2.5"
                 >
-                  <BrandMark className="h-7 w-8 text-blue-600" />
-                  <span className="font-display text-lg font-bold tracking-tight text-gray-950">
+                  <BrandMark className="h-7 w-8 text-blue-600 lg:h-9 lg:w-10" />
+                  <span className="font-display text-lg font-bold tracking-tight text-gray-950 lg:text-[22px] lg:leading-none">
                     Cadence
                   </span>
                 </Link>
@@ -446,6 +452,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <Link
                         key={item.href}
                         href={item.href}
+                        target={item.href === '/docs' ? '_blank' : undefined}
+                        rel={item.href === '/docs' ? 'noopener noreferrer' : undefined}
                         aria-current={active ? 'page' : undefined}
                         className={`group inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-all duration-150 whitespace-nowrap shrink-0 ${
                           active
@@ -478,7 +486,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </header>
 
           <main className="min-w-0 flex-1 bg-white">
-            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+            <div
+              className={
+                pathname === '/create-chatbot'
+                  ? 'mx-auto max-w-screen-2xl px-4 py-6 sm:px-6'
+                  : 'mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10'
+              }
+            >
               {backendError && (
                 <div className="mb-6 flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
                   <AlertTriangle className="h-4 w-4 shrink-0" />

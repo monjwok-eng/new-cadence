@@ -98,6 +98,7 @@
         "launcherLabel": { "type": "string", "maxLength": 60 },
         "leadCaptureEnabled": { "type": "boolean" },
         "allowedDomains": { "type": "array" },
+        "widgetConfigJson": { "type": "string", "maxLength": 4000 },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
@@ -289,6 +290,7 @@
         "launcherLabel": { "type": "string", "maxLength": 60 },
         "leadCaptureEnabled": { "type": "boolean" },
         "allowedDomains": { "type": "array" },
+        "widgetConfigJson": { "type": "string", "maxLength": 4000 },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "workspaceId", "workspaceOwnerId", "name", "businessName", "personality", "customInstructions", "voiceId", "voiceLabel", "language", "status", "accentColor", "widgetPosition", "widgetTheme", "leadCaptureEnabled", "updatedAt"]

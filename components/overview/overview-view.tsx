@@ -29,7 +29,7 @@ export function OverviewView() {
     !window.location.hostname.includes('run.app') &&
     !window.location.hostname.includes('localhost')
       ? window.location.origin
-      : 'https://cadence-teal-eight.vercel.app';
+      : 'https://new-cadence-gamma.vercel.app';
 
   const featuredAgent = useMemo(
     () => agents.find((a) => a.status === 'Active') || agents[0] || null,
