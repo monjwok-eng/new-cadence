@@ -28,26 +28,6 @@ import {
   Volume2,
   X,
 } from 'lucide-react';
-import {
-  TbAddressBook,
-  TbBriefcase,
-  TbBriefcaseFilled,
-  TbChartBar,
-  TbFiles,
-  TbFilesFilled,
-  TbLayoutNavbar,
-  TbLayoutNavbarFilled,
-  TbLetterCase,
-  TbLink,
-  TbMessages,
-  TbMessagesFilled,
-  TbQuote,
-  TbQuoteFilled,
-  TbSelector,
-  TbSettings,
-  TbSettingsFilled,
-} from 'react-icons/tb';
-import { PiPlugs, PiPlugsFill } from 'react-icons/pi';
 import { useApp } from '@/components/providers/app-provider';
 import { HubHeaderBar } from '@/components/layout/hub-top-nav';
 import { CadenceOrbLauncherIcon } from '@/components/embed/cadence-orb';
@@ -321,276 +301,384 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
 
   const accountEmail = user?.email || firebaseUser?.email || 'Workspace';
 
+  const navIconClass = (active: boolean) =>
+    active
+      ? 'h-5 w-5 shrink-0 group-hover:-rotate-6'
+      : 'h-5 w-5 shrink-0 text-gray-500 transition-all duration-150 group-hover:-rotate-6 group-hover:text-gray-900';
+
+  const navBtnClass = (active: boolean) =>
+    `group flex w-full items-center gap-2.5 text-left font-medium text-base transition-all duration-150 whitespace-nowrap ${
+      active ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
+    }`;
+
   const SidebarNav = (
-    <div className="flex h-full flex-col bg-white">
-      {/* Chatbot Switcher Card */}
-      <div className="relative px-3.5 pt-4 pb-1">
-        {isLoading && !agent ? (
-          <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-neutral-200/90 bg-white px-3.5 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-3 w-36" />
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-6 w-6 shrink-0 rounded-full" />
-                <Skeleton className="h-4 w-28" />
+    <div className="w-full px-4 py-6 sm:px-6">
+      <div className="space-y-6 pb-16">
+        {/* Chatbot Switcher Card */}
+        <div className="relative -mx-2">
+          {isLoading && !agent ? (
+            <div className="flex w-full items-center justify-between gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 shadow-sm">
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-3 w-36" />
+                <div className="mt-1 flex items-center gap-2">
+                  <Skeleton className="h-6 w-6 shrink-0 rounded-full" />
+                  <Skeleton className="h-4 w-28" />
+                </div>
               </div>
+              <Skeleton className="h-5 w-5 shrink-0" />
             </div>
-            <Skeleton className="h-4 w-4 shrink-0" />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setChatbotSwitcherOpen((prev) => !prev)}
-            aria-expanded={chatbotSwitcherOpen}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-neutral-200/90 bg-white px-3.5 py-2.5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-colors hover:border-neutral-300"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[11.5px] text-neutral-500">{accountEmail}</p>
-              <div className="mt-1.5 flex items-center gap-2">
-                <CadenceOrbLauncherIcon className="h-6 w-6 shrink-0" />
-                <span className="truncate font-display text-sm font-semibold tracking-[-0.01em] text-neutral-950">
-                  {agent?.name || 'Select Chatbot'}
-                </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setChatbotSwitcherOpen((prev) => !prev)}
+              aria-expanded={chatbotSwitcherOpen}
+              className="flex w-full items-center justify-between gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-left shadow-sm transition-all duration-150 hover:border-gray-300 hover:shadow-md"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-gray-500">
+                  {accountEmail}
+                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <CadenceOrbLauncherIcon className="h-6 w-6 shrink-0 rounded-full ring-1 ring-gray-200" />
+                  <p className="min-w-0 flex-1 truncate text-base font-semibold text-gray-900">
+                    {agent?.name || 'Select Chatbot'}
+                  </p>
+                </div>
               </div>
-            </div>
-            <TbSelector className="h-4 w-4 shrink-0 text-neutral-400" />
-          </button>
-        )}
-
-        {chatbotSwitcherOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setChatbotSwitcherOpen(false)}
-              aria-hidden="true"
-            />
-            <div className="absolute left-3.5 right-3.5 top-full z-20 mt-1.5 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-lg">
-              <p className="px-2.5 py-1 text-[11px] font-medium text-neutral-500">
-                Switch Chatbot
-              </p>
-              <div className="max-h-56 space-y-0.5 overflow-y-auto">
-                {agents.map((item) => {
-                  const isCurrent = item.id === agentId;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setChatbotSwitcherOpen(false);
-                        setMobileSidebarOpen(false);
-                        if (!isCurrent) {
-                          router.push(`/agents/${item.id}?tab=${activeTab}`);
-                        }
-                      }}
-                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
-                        isCurrent
-                          ? 'bg-neutral-100 font-semibold text-neutral-900'
-                          : 'text-neutral-700 hover:bg-neutral-50'
-                      }`}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <CadenceOrbLauncherIcon className="h-5 w-5 shrink-0" />
-                        <span className="truncate">{item.name}</span>
-                      </span>
-                      {isCurrent && <Check className="h-3.5 w-3.5 shrink-0 text-blue-600" strokeWidth={2.1} />}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="my-1 border-t border-neutral-200 pt-1">
-                <Link
-                  href="/dashboard"
-                  onClick={() => {
-                    setChatbotSwitcherOpen(false);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5 text-neutral-400" strokeWidth={1.85} />
-                  All Chatbots
-                </Link>
-                <Link
-                  href="/create-chatbot"
-                  onClick={() => {
-                    setChatbotSwitcherOpen(false);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50"
-                >
-                  <Plus className="h-3.5 w-3.5" strokeWidth={2} />
-                  Create New Chatbot
-                </Link>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Scoped Sidebar Items */}
-      <nav
-        aria-label="Chatbot workspace navigation"
-        className="flex-1 space-y-4 overflow-y-auto px-3 py-3"
-      >
-        <div className="space-y-0.5">
-          {(
-            [
-              {
-                id: 'dashboard',
-                label: 'Dashboard',
-                icon: TbLayoutNavbar,
-                activeIcon: TbLayoutNavbarFilled,
-              },
-              {
-                id: 'embed',
-                label: 'Installation',
-                icon: TbBriefcase,
-                activeIcon: TbBriefcaseFilled,
-              },
-
-              {
-                id: 'logs',
-                label: 'Chat History',
-                icon: TbMessages,
-                activeIcon: TbMessagesFilled,
-              },
-              {
-                id: 'analytics',
-                label: 'Analytics',
-                icon: TbChartBar,
-                activeIcon: TbChartBar,
-              },
-              {
-                id: 'leads',
-                label: 'Leads',
-                icon: TbAddressBook,
-                activeIcon: TbAddressBook,
-              },
-            ] as const
-          ).map((item) => {
-            const active = activeTab === item.id;
-            const Icon = active ? item.activeIcon : item.icon;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleSelectTab(item.id)}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13.5px] transition-colors duration-150 whitespace-nowrap ${
-                  active
-                    ? 'font-semibold text-blue-600'
-                    : 'font-medium text-neutral-700 hover:bg-neutral-50 hover:text-neutral-950'
-                }`}
+              <svg
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-gray-400"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="currentColor"
+                viewBox="0 0 256 256"
               >
-                <Icon
-                  className={`h-[19px] w-[19px] shrink-0 ${
-                    active ? 'text-blue-600' : 'text-neutral-500'
-                  }`}
-                />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+                <path d="M184.49,167.51a12,12,0,0,1,0,17l-48,48a12,12,0,0,1-17,0l-48-48a12,12,0,0,1,17-17L128,207l39.51-39.52A12,12,0,0,1,184.49,167.51Zm-96-79L128,49l39.51,39.52a12,12,0,0,0,17-17l-48-48a12,12,0,0,0-17,0l-48,48a12,12,0,0,0,17,17Z" />
+              </svg>
+            </button>
+          )}
+
+          {chatbotSwitcherOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setChatbotSwitcherOpen(false)}
+                aria-hidden="true"
+              />
+              <div className="absolute left-0 right-0 top-full z-20 mt-1.5 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg">
+                <p className="px-2.5 py-1 text-[11px] font-medium text-gray-500">
+                  Switch Chatbot
+                </p>
+                <div className="max-h-56 space-y-0.5 overflow-y-auto">
+                  {agents.map((item) => {
+                    const isCurrent = item.id === agentId;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setChatbotSwitcherOpen(false);
+                          setMobileSidebarOpen(false);
+                          if (!isCurrent) {
+                            router.push(`/agents/${item.id}?tab=${activeTab}`);
+                          }
+                        }}
+                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
+                          isCurrent
+                            ? 'bg-gray-100 font-semibold text-gray-900'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <CadenceOrbLauncherIcon className="h-5 w-5 shrink-0" />
+                          <span className="truncate">{item.name}</span>
+                        </span>
+                        {isCurrent && (
+                          <Check className="h-3.5 w-3.5 shrink-0 text-blue-600" strokeWidth={2.1} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="my-1 border-t border-gray-200 pt-1">
+                  <Link
+                    href="/dashboard"
+                    onClick={() => {
+                      setChatbotSwitcherOpen(false);
+                      setMobileSidebarOpen(false);
+                    }}
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5 text-gray-400" strokeWidth={1.85} />
+                    All Chatbots
+                  </Link>
+                  <Link
+                    href="/create-chatbot"
+                    onClick={() => {
+                      setChatbotSwitcherOpen(false);
+                      setMobileSidebarOpen(false);
+                    }}
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                  >
+                    <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                    Create New Chatbot
+                  </Link>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* KNOWLEDGE BASE Section */}
-        <div className="border-t border-neutral-200/80 pt-4">
-          <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
-            Knowledge Base
-          </p>
-          <div className="space-y-0.5">
-            {(
-              [
-                {
-                  id: 'custom-responses',
-                  label: 'Custom Responses',
-                  icon: TbQuote,
-                  activeIcon: TbQuoteFilled,
-                },
-                {
-                  id: 'text-snippets',
-                  label: 'Text Snippets',
-                  icon: TbLetterCase,
-                  activeIcon: TbLetterCase,
-                },
-                {
-                  id: 'links',
-                  label: 'Website Links',
-                  icon: TbLink,
-                  activeIcon: TbLink,
-                },
-                {
-                  id: 'files',
-                  label: 'Files & Data Sources',
-                  icon: TbFiles,
-                  activeIcon: TbFilesFilled,
-                },
-              ] as const
-            ).map((item) => {
-              const active = activeTab === item.id;
-              const Icon = active ? item.activeIcon : item.icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleSelectTab(item.id)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13.5px] transition-colors duration-150 whitespace-nowrap ${
-                    active
-                      ? 'font-semibold text-blue-600'
-                      : 'font-medium text-neutral-700 hover:bg-neutral-50 hover:text-neutral-950'
-                  }`}
+        {/* Scoped Sidebar Items */}
+        <nav aria-label="Chatbot workspace navigation" className="space-y-6">
+          <ul className="space-y-5">
+            <li>
+              <button
+                type="button"
+                onClick={() => handleSelectTab('dashboard')}
+                className={navBtnClass(activeTab === 'dashboard')}
+              >
+                <svg
+                  aria-hidden="true"
+                  className={navIconClass(activeTab === 'dashboard')}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="currentColor"
+                  viewBox="0 0 256 256"
                 >
-                  <Icon
-                    className={`h-[19px] w-[19px] shrink-0 ${
-                      active ? 'text-blue-600' : 'text-neutral-500'
-                    }`}
-                  />
-                  <span>{item.label}</span>
+                  {activeTab === 'dashboard' ? (
+                    <path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM40,56H216V96H40ZM216,200H112V112H216v88Z" />
+                  ) : (
+                    <>
+                      <path d="M224,104V200a8,8,0,0,1-8,8H104V104Z" opacity="0.2" />
+                      <path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,16V96H40V56ZM40,112H96v88H40Zm176,88H112V112H216v88Z" />
+                    </>
+                  )}
+                </svg>
+                <span>Dashboard</span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                type="button"
+                onClick={() => handleSelectTab('embed')}
+                className={navBtnClass(activeTab === 'embed')}
+              >
+                <svg
+                  aria-hidden="true"
+                  className={navIconClass(activeTab === 'embed')}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="currentColor"
+                  viewBox="0 0 256 256"
+                >
+                  <path d="M232,120v72a8,8,0,0,1-8,8H32a8,8,0,0,1-8-8V120Z" opacity="0.2" />
+                  <path d="M224,64H176V56a24,24,0,0,0-24-24H104A24,24,0,0,0,80,56v8H32A16,16,0,0,0,16,80V192a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V80A16,16,0,0,0,224,64ZM96,56a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96ZM32,80H224v32H192v-8a8,8,0,0,0-16,0v8H80v-8a8,8,0,0,0-16,0v8H32ZM224,192H32V128H64v8a8,8,0,0,0,16,0v-8h96v8a8,8,0,0,0,16,0v-8h32v64Z" />
+                </svg>
+                <span>Installation</span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                type="button"
+                onClick={() => handleSelectTab('logs')}
+                className={navBtnClass(activeTab === 'logs')}
+              >
+                <svg
+                  aria-hidden="true"
+                  className={navIconClass(activeTab === 'logs')}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="currentColor"
+                  viewBox="0 0 256 256"
+                >
+                  <path d="M224,96V224l-39.58-32H88a8,8,0,0,1-8-8V144h88a8,8,0,0,0,8-8V88h40A8,8,0,0,1,224,96Z" opacity="0.2" />
+                  <path d="M216,80H184V48a16,16,0,0,0-16-16H40A16,16,0,0,0,24,48V176a8,8,0,0,0,13,6.22L72,154V184a16,16,0,0,0,16,16h93.59L219,230.22a8,8,0,0,0,5,1.78,8,8,0,0,0,8-8V96A16,16,0,0,0,216,80ZM66.55,137.78,40,159.25V48H168v88H71.58A8,8,0,0,0,66.55,137.78ZM216,207.25l-26.55-21.47a8,8,0,0,0-5-1.78H88V152h80a16,16,0,0,0,16-16V96h32Z" />
+                </svg>
+                <span>Chat History</span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                type="button"
+                onClick={() => handleSelectTab('analytics')}
+                className={navBtnClass(activeTab === 'analytics')}
+              >
+                <svg
+                  aria-hidden="true"
+                  className={navIconClass(activeTab === 'analytics')}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="currentColor"
+                  viewBox="0 0 256 256"
+                >
+                  <path d="M208,40V200H160V40Z" opacity="0.2" />
+                  <path d="M224,200h-8V40a8,8,0,0,0-8-8H152a8,8,0,0,0-8,8V80H96a8,8,0,0,0-8,8v40H48a8,8,0,0,0-8,8v64H32a8,8,0,0,0,0,16H224a8,8,0,0,0,0-16ZM160,48h40V200H160ZM104,96h40V200H104ZM56,144H88v56H56Z" />
+                </svg>
+                <span>Analytics</span>
+              </button>
+            </li>
+
+            <li>
+              <button
+                type="button"
+                onClick={() => handleSelectTab('leads')}
+                className={navBtnClass(activeTab === 'leads')}
+              >
+                <svg
+                  aria-hidden="true"
+                  className={navIconClass(activeTab === 'leads')}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="currentColor"
+                  viewBox="0 0 256 256"
+                >
+                  <path d="M208,32H64a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H208a8,8,0,0,0,8-8V40A8,8,0,0,0,208,32ZM136,144a32,32,0,1,1,32-32A32,32,0,0,1,136,144Z" opacity="0.2" />
+                  <path d="M83.19,174.4a8,8,0,0,0,11.21-1.6,52,52,0,0,1,83.2,0,8,8,0,1,0,12.8-9.6A67.88,67.88,0,0,0,163,141.51a40,40,0,1,0-53.94,0A67.88,67.88,0,0,0,81.6,163.2,8,8,0,0,0,83.19,174.4ZM112,112a24,24,0,1,1,24,24A24,24,0,0,1,112,112Zm96-88H64A16,16,0,0,0,48,40V64H32a8,8,0,0,0,0,16H48v40H32a8,8,0,0,0,0,16H48v40H32a8,8,0,0,0,0,16H48v24a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V40A16,16,0,0,0,208,24Zm0,192H64V40H208Z" />
+                </svg>
+                <span>Leads</span>
+              </button>
+            </li>
+          </ul>
+
+          <hr className="border-gray-200" />
+
+          {/* KNOWLEDGE BASE Section */}
+          <div className="space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Knowledge Base
+            </p>
+            <ul className="space-y-5">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('custom-responses')}
+                  className={navBtnClass(activeTab === 'custom-responses')}
+                >
+                  <svg
+                    aria-hidden="true"
+                    className={navIconClass(activeTab === 'custom-responses')}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor"
+                    viewBox="0 0 256 256"
+                  >
+                    <path d="M108,72v72H40a8,8,0,0,1-8-8V72a8,8,0,0,1,8-8h60A8,8,0,0,1,108,72Zm108-8H156a8,8,0,0,0-8,8v64a8,8,0,0,0,8,8h68V72A8,8,0,0,0,216,64Z" opacity="0.2" />
+                    <path d="M100,56H40A16,16,0,0,0,24,72v64a16,16,0,0,0,16,16h60v8a32,32,0,0,1-32,32,8,8,0,0,0,0,16,48.05,48.05,0,0,0,48-48V72A16,16,0,0,0,100,56Zm0,80H40V72h60ZM216,56H156a16,16,0,0,0-16,16v64a16,16,0,0,0,16,16h60v8a32,32,0,0,1-32,32,8,8,0,0,0,0,16,48.05,48.05,0,0,0,48-48V72A16,16,0,0,0,216,56Zm0,80H156V72h60Z" />
+                  </svg>
+                  <span>Custom Responses</span>
                 </button>
-              );
-            })}
-          </div>
-        </div>
+              </li>
 
-        {/* CUSTOMIZATIONS Section */}
-        <div className="border-t border-neutral-200/80 pt-4">
-          <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
-            Customizations
-          </p>
-          <div className="space-y-0.5">
-            <button
-              type="button"
-              onClick={() => handleSelectTab('integrations')}
-              className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13.5px] transition-colors duration-150 whitespace-nowrap ${
-                activeTab === 'integrations'
-                  ? 'font-semibold text-blue-600'
-                  : 'font-medium text-neutral-700 hover:bg-neutral-50 hover:text-neutral-950'
-              }`}
-            >
-              {activeTab === 'integrations' ? (
-                <PiPlugsFill className="h-[19px] w-[19px] shrink-0 text-blue-600 transition-transform duration-150 group-hover:-rotate-6" />
-              ) : (
-                <PiPlugs className="h-[19px] w-[19px] shrink-0 text-neutral-500 transition-transform duration-150 group-hover:-rotate-6" />
-              )}
-              <span>Integrations</span>
-            </button>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('text-snippets')}
+                  className={navBtnClass(activeTab === 'text-snippets')}
+                >
+                  <svg
+                    aria-hidden="true"
+                    className={navIconClass(activeTab === 'text-snippets')}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor"
+                    viewBox="0 0 256 256"
+                  >
+                    <path d="M232,164c0,15.46-14.33,28-32,28s-32-12.54-32-28,14.33-28,32-28S232,148.54,232,164ZM34.82,152h90.36L80,56Z" opacity="0.2" />
+                    <path d="M87.24,52.59a8,8,0,0,0-14.48,0l-64,136a8,8,0,1,0,14.48,6.81L39.9,160h80.2l16.66,35.4a8,8,0,1,0,14.48-6.81ZM47.43,144,80,74.79,112.57,144ZM200,96c-12.76,0-22.73,3.47-29.63,10.32a8,8,0,0,0,11.26,11.36c3.8-3.77,10-5.68,18.37-5.68,13.23,0,24,9,24,20v3.22A42.76,42.76,0,0,0,200,128c-22.06,0-40,16.15-40,36s17.94,36,40,36a42.73,42.73,0,0,0,24-7.25,8,8,0,0,0,16-.75V132C240,112.15,222.06,96,200,96Zm0,88c-13.23,0-24-9-24-20s10.77-20,24-20,24,9,24,20S213.23,184,200,184Z" />
+                  </svg>
+                  <span>Text Snippets</span>
+                </button>
+              </li>
 
-            <button
-              type="button"
-              onClick={() => handleSelectTab('settings')}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13.5px] transition-colors duration-150 whitespace-nowrap ${
-                activeTab === 'settings'
-                  ? 'font-semibold text-blue-600'
-                  : 'font-medium text-neutral-700 hover:bg-neutral-50 hover:text-neutral-950'
-              }`}
-            >
-              {activeTab === 'settings' ? (
-                <TbSettingsFilled className="h-[19px] w-[19px] shrink-0 text-blue-600" />
-              ) : (
-                <TbSettings className="h-[19px] w-[19px] shrink-0 text-neutral-500" />
-              )}
-              <span>Settings</span>
-            </button>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('links')}
+                  className={navBtnClass(activeTab === 'links')}
+                >
+                  <svg
+                    aria-hidden="true"
+                    className={navIconClass(activeTab === 'links')}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor"
+                    viewBox="0 0 256 256"
+                  >
+                    <path d="M209.94,113.94l-28,28a47.76,47.76,0,0,1-26.52,13.48,47.76,47.76,0,0,1-13.48,26.52l-28,28a48,48,0,0,1-67.88-67.88l28-28a47.76,47.76,0,0,1,26.52-13.48,47.76,47.76,0,0,1,13.48-26.52l28-28a48,48,0,0,1,67.88,67.88Z" opacity="0.2" />
+                    <path d="M137.54,186.36a8,8,0,0,1,0,11.31l-17.94,18A56,56,0,0,1,40.38,136.4L68.5,108.29A56,56,0,0,1,145.31,106a8,8,0,1,1-10.64,12,40,40,0,0,0-54.85,1.63L51.7,147.72a40,40,0,1,0,56.58,56.58l17.94-17.94A8,8,0,0,1,137.54,186.36Zm78.08-146a56.08,56.08,0,0,0-79.22,0L118.46,58.33a8,8,0,0,0,11.32,11.31L147.72,51.7a40,40,0,0,1,56.58,56.58L176.18,136.4A40,40,0,0,1,121.33,138,8,8,0,1,0,110.69,150a56,56,0,0,0,76.81-2.27l28.12-28.11A56.08,56.08,0,0,0,215.62,40.38Z" />
+                  </svg>
+                  <span>Website Links</span>
+                </button>
+              </li>
+
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('files')}
+                  className={navBtnClass(activeTab === 'files')}
+                >
+                  <svg
+                    aria-hidden="true"
+                    className={navIconClass(activeTab === 'files')}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor"
+                    viewBox="0 0 256 256"
+                  >
+                    <path d="M208,72V184a8,8,0,0,1-8,8H176V104L136,64H80V40a8,8,0,0,1,8-8h80Z" opacity="0.2" />
+                    <path d="M213.66,66.34l-40-40A8,8,0,0,0,168,24H88A16,16,0,0,0,72,40V56H56A16,16,0,0,0,40,72V216a16,16,0,0,0,16,16H168a16,16,0,0,0,16-16V200h16a16,16,0,0,0,16-16V72A8,8,0,0,0,213.66,66.34ZM168,216H56V72h76.69L168,107.31v84.53c0,.06,0,.11,0,.16s0,.1,0,.16V216Zm32-32H184V104a8,8,0,0,0-2.34-5.66l-40-40A8,8,0,0,0,136,56H88V40h76.69L200,75.31Zm-56-32a8,8,0,0,1-8,8H88a8,8,0,0,1,0-16h48A8,8,0,0,1,144,152Zm0,32a8,8,0,0,1-8,8H88a8,8,0,0,1,0-16h48A8,8,0,0,1,144,184Z" />
+                  </svg>
+                  <span>Files &amp; Data Sources</span>
+                </button>
+              </li>
+            </ul>
           </div>
-        </div>
-      </nav>
+
+          <hr className="border-gray-200" />
+
+          {/* CUSTOMIZATIONS Section */}
+          <div className="space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Customizations
+            </p>
+            <ul className="space-y-5">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('integrations')}
+                  className={navBtnClass(activeTab === 'integrations')}
+                >
+                  <svg
+                    aria-hidden="true"
+                    className={navIconClass(activeTab === 'integrations')}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor"
+                    viewBox="0 0 256 256"
+                  >
+                    <path d="M76,124l56,56-29,29a24,24,0,0,1-33.94,0L47,186.91A24,24,0,0,1,47,153ZM209,69.09,186.91,47A24,24,0,0,0,153,47L124,76l56,56,29-29A24,24,0,0,0,209,69.09Z" opacity="0.2" />
+                    <path d="M149.66,138.34a8,8,0,0,0-11.32,0L120,156.69,99.31,136l18.35-18.34a8,8,0,0,0-11.32-11.32L88,124.69,69.66,106.34a8,8,0,0,0-11.32,11.32L64.69,124,41.37,147.31a32,32,0,0,0,0,45.26l5.38,5.37-28.41,28.4a8,8,0,0,0,11.32,11.32l28.4-28.41,5.37,5.38a32,32,0,0,0,45.26,0L132,191.31l6.34,6.35a8,8,0,0,0,11.32-11.32L131.31,168l18.35-18.34A8,8,0,0,0,149.66,138.34Zm-52.29,65a16,16,0,0,1-22.62,0L52.69,181.25a16,16,0,0,1,0-22.62L76,135.31,120.69,180Zm140.29-185a8,8,0,0,0-11.32,0l-28.4,28.41-5.37-5.38a32.05,32.05,0,0,0-45.26,0L124,64.69l-6.34-6.35a8,8,0,0,0-11.32,11.32l80,80a8,8,0,0,0,11.32-11.32L191.31,132l23.32-23.31a32,32,0,0,0,0-45.26l-5.38-5.37,28.41-28.4A8,8,0,0,0,237.66,18.34Zm-34.35,79L180,120.69,135.31,76l23.32-23.31a16,16,0,0,1,22.62,0l22.06,22A16,16,0,0,1,203.31,97.37Z" />
+                  </svg>
+                  <span>Integrations</span>
+                </button>
+              </li>
+
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('settings')}
+                  className={navBtnClass(activeTab === 'settings')}
+                >
+                  <svg
+                    aria-hidden="true"
+                    className={navIconClass(activeTab === 'settings')}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor"
+                    viewBox="0 0 256 256"
+                  >
+                    <path d="M207.86,123.18l16.78-21a99.14,99.14,0,0,0-10.07-24.29l-26.7-3a81,81,0,0,0-6.81-6.81l-3-26.71a99.43,99.43,0,0,0-24.3-10l-21,16.77a81.59,81.59,0,0,0-9.64,0l-21-16.78A99.14,99.14,0,0,0,77.91,41.43l-3,26.7a81,81,0,0,0-6.81,6.81l-26.71,3a99.43,99.43,0,0,0-10,24.3l16.77,21a81.59,81.59,0,0,0,0,9.64l-16.78,21a99.14,99.14,0,0,0,10.07,24.29l26.7,3a81,81,0,0,0,6.81,6.81l3,26.71a99.43,99.43,0,0,0,24.3,10l21-16.77a81.59,81.59,0,0,0,9.64,0l21,16.78a99.14,99.14,0,0,0,24.29-10.07l3-26.7a81,81,0,0,0,6.81-6.81l26.71-3a99.43,99.43,0,0,0,10-24.3l-16.77-21A81.59,81.59,0,0,0,207.86,123.18ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z" opacity="0.2" />
+                    <path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm88-29.84q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.6,107.6,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3-3L186,40.54a8,8,0,0,0-3.94-6,107.29,107.29,0,0,0-26.25-10.86,8,8,0,0,0-7.06,1.48L130.16,40Q128,40,125.84,40L107.2,25.11a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,73.89,34.51a8,8,0,0,0-3.93,6L67.32,64.27q-1.56,1.49-3,3L40.54,70a8,8,0,0,0-6,3.94,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L40,125.84Q40,128,40,130.16L25.11,148.8a8,8,0,0,0-1.48,7.06,107.6,107.6,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3,3L70,215.46a8,8,0,0,0,3.94,6,107.71,107.71,0,0,0,26.25,10.87,8,8,0,0,0,7.06-1.49L125.84,216q2.16.06,4.32,0l18.64,14.92a8,8,0,0,0,7.06,1.48,107.21,107.21,0,0,0,26.25-10.88,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3-3L215.46,186a8,8,0,0,0,6-3.94,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0-1.49-7.06Zm-16.1-6.5a73.93,73.93,0,0,1,0,8.68,8,8,0,0,0,1.74,5.48l14.19,17.73a91.57,91.57,0,0,1-6.23,15L187,173.11a8,8,0,0,0-5.1,2.64,74.11,74.11,0,0,1-6.14,6.14,8,8,0,0,0-2.64,5.1l-2.51,22.58a91.32,91.32,0,0,1-15,6.23l-17.74-14.19a8,8,0,0,0-5-1.75h-.48a73.93,73.93,0,0,1-8.68,0,8.06,8.06,0,0,0-5.48,1.74L100.45,215.8a91.57,91.57,0,0,1-15-6.23L82.89,187a8,8,0,0,0-2.64-5.1,74.11,74.11,0,0,1-6.14-6.14,8,8,0,0,0-5.1-2.64L46.43,170.6a91.32,91.32,0,0,1-6.23-15l14.19-17.74a8,8,0,0,0,1.74-5.48,73.93,73.93,0,0,1,0-8.68,8,8,0,0,0-1.74-5.48L40.2,100.45a91.57,91.57,0,0,1,6.23-15L69,82.89a8,8,0,0,0,5.1-2.64,74.11,74.11,0,0,1,6.14-6.14A8,8,0,0,0,82.89,69L85.4,46.43a91.32,91.32,0,0,1,15-6.23l17.74,14.19a8,8,0,0,0,5.48,1.74,73.93,73.93,0,0,1,8.68,0,8.06,8.06,0,0,0,5.48-1.74L155.55,40.2a91.57,91.57,0,0,1,15,6.23L173.11,69a8,8,0,0,0,2.64,5.1,74.11,74.11,0,0,1,6.14,6.14,8,8,0,0,0,5.1,2.64l22.58,2.51a91.32,91.32,0,0,1,6.23,15l-14.19,17.74A8,8,0,0,0,199.87,123.66Z" />
+                  </svg>
+                  <span>Settings</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+        </nav>
+      </div>
     </div>
   );
 
@@ -626,8 +714,13 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
 
       <div className="flex">
         {/* Desktop Scoped Left Sidebar */}
-        <aside className="hidden w-64 shrink-0 border-r border-neutral-200 bg-white lg:block">
-          <div className="sticky top-16 h-[calc(100vh-4rem)]">{SidebarNav}</div>
+        <aside
+          id="sideNavigation"
+          className="hidden shrink-0 border-r border-gray-200 bg-white lg:flex lg:w-[240px] xl:w-[288px]"
+        >
+          <div className="sticky top-16 h-[calc(100vh-4rem)] w-full overflow-y-auto">
+            {SidebarNav}
+          </div>
         </aside>
 
         {/* Mobile Slide-Over Sidebar Drawer (sits cleanly beneath the h-16 header) */}
@@ -637,7 +730,7 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
               className="fixed inset-x-0 top-16 bottom-0 bg-neutral-950/35"
               onClick={() => setMobileSidebarOpen(false)}
             />
-            <aside className="relative z-10 h-full w-72 max-w-[85vw] border-r border-neutral-200 bg-white shadow-xl">
+            <aside className="relative z-10 h-full w-72 max-w-[85vw] overflow-y-auto border-r border-gray-200 bg-white shadow-xl">
               {SidebarNav}
             </aside>
           </div>
@@ -668,24 +761,52 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
               >
                 {/* Header Skeleton */}
                 <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
-                  <Skeleton className="h-9 w-40 rounded-lg" />
-                  <Skeleton className="h-8 w-20 rounded-lg" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-9 w-48 rounded-lg" />
+                    <Skeleton className="h-4 w-64 rounded-md" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-10 w-28 rounded-xl" />
+                    <Skeleton className="h-10 w-32 rounded-xl" />
+                  </div>
                 </div>
 
-                {/* Metrics Grid Skeleton (3 action cards + 4 stat cards) */}
+                {/* Channel Names & Knowledge Sources Skeleton Bar */}
+                <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-6 w-6 rounded-md" />
+                      <Skeleton className="h-5 w-40" />
+                    </div>
+                    <Skeleton className="h-8 w-24 rounded-lg" />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                      <div key={`chan-skel-${idx}`} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
+                        <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Metrics Grid Skeleton with Thumbnails and Titles */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
                   {Array.from({ length: 3 }).map((_, i) => (
                     <div
                       key={`dash-skel-add-${i}`}
                       className="rounded-xl border-2 border-dashed border-gray-200 bg-white p-6 shadow-sm"
                     >
-                      <div className="flex items-start gap-3">
-                        <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+                      <div className="flex items-start gap-4">
+                        <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
                         <div className="min-w-0 flex-1 space-y-3">
                           <Skeleton className="h-4 w-32" />
                           <div className="flex items-center justify-between gap-4">
-                            <Skeleton className="h-9 w-10" />
-                            <Skeleton className="h-8 w-16 rounded-md" />
+                            <Skeleton className="h-8 w-12" />
+                            <Skeleton className="h-8 w-20 rounded-lg" />
                           </div>
                         </div>
                       </div>
@@ -697,78 +818,64 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
                       key={`dash-skel-stat-${i}`}
                       className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
                     >
-                      <div className="flex items-start gap-3">
-                        <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+                      <div className="flex items-start gap-4">
+                        <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
                         <div className="min-w-0 flex-1 space-y-3">
-                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-36" />
                           <div className="flex items-end justify-between gap-4">
-                            <Skeleton className="h-9 w-12" />
-                            <Skeleton className="h-5 w-28" />
+                            <Skeleton className="h-9 w-14" />
+                            <Skeleton className="h-5 w-24" />
                           </div>
                         </div>
                       </div>
                     </div>
                   ))}
-
-                  <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
-                      <div className="min-w-0 flex-1 space-y-3">
-                        <Skeleton className="h-4 w-36" />
-                        <Skeleton className="h-9 w-12" />
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
                 <hr className="border-gray-200" />
 
-                {/* Status & Preview Skeleton */}
-                <div className="space-y-4 sm:space-y-6">
-                  <Skeleton className="h-7 w-44 rounded-lg" />
-                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <Skeleton className="h-6 w-6 shrink-0 rounded-md" />
-                      <div className="w-full max-w-xl space-y-3">
-                        <Skeleton className="h-4 w-64" />
-                        <Skeleton className="h-4 w-full max-w-md" />
-                        <div className="flex flex-wrap items-center gap-3 pt-1">
-                          <Skeleton className="h-9 w-28 rounded-md" />
-                          <Skeleton className="h-9 w-28 rounded-md" />
-                          <Skeleton className="h-9 w-44 rounded-md" />
+                {/* Thumbnail & Title Preview Layout Skeleton */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-7 w-48 rounded-lg" />
+                    <Skeleton className="h-6 w-24 rounded-md" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {Array.from({ length: 2 }).map((_, idx) => (
+                      <div key={`thumb-skel-${idx}`} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-8 w-8 rounded-lg" />
+                          <div className="space-y-1.5 flex-1">
+                            <Skeleton className="h-4 w-40" />
+                            <Skeleton className="h-3 w-28" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-32 w-full rounded-lg" />
+                        <div className="flex items-center justify-between pt-2">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-8 w-28 rounded-lg" />
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
                 <hr className="border-gray-200" />
 
-                {/* Installation Skeleton */}
+                {/* Installation & Channel Embedding Skeleton */}
                 <div className="space-y-4 sm:space-y-6">
-                  <Skeleton className="h-7 w-32 rounded-lg" />
+                  <Skeleton className="h-7 w-40 rounded-lg" />
 
                   <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-6 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <Skeleton className="h-6 w-6 shrink-0 rounded-md" />
+                    <div className="flex items-start gap-4">
+                      <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />
                       <div className="min-w-0 flex-1 space-y-3">
-                        <Skeleton className="h-5 w-28" />
+                        <Skeleton className="h-5 w-36" />
                         <Skeleton className="h-4 w-full max-w-lg" />
-                        <div className="flex items-center gap-2 pt-1">
-                          <Skeleton className="h-9 w-64 rounded-lg" />
-                          <Skeleton className="h-7 w-16 rounded-md" />
+                        <div className="flex items-center gap-3 pt-1">
+                          <Skeleton className="h-10 w-72 rounded-lg" />
+                          <Skeleton className="h-8 w-20 rounded-md" />
                         </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-6 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <Skeleton className="h-6 w-6 shrink-0 rounded-md" />
-                      <div className="min-w-0 flex-1 space-y-3">
-                        <Skeleton className="h-5 w-32" />
-                        <Skeleton className="h-4 w-full max-w-md" />
-                        <Skeleton className="h-20 w-full max-w-2xl rounded-lg" />
                       </div>
                     </div>
                   </div>
@@ -802,15 +909,6 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
                           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        disabled={cyclingStatus}
-                        onClick={handleToggleStatus}
-                        title="Toggle Active / Inactive"
-                        className="self-start rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50 sm:self-auto"
-                      >
-                        <StatusDisplay status={agent.status} />
-                      </button>
                     </div>
 
                     {/* Metrics Grid */}

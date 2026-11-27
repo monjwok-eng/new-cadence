@@ -24,6 +24,7 @@ import {
   ROLE_PRESETS,
 } from './onboarding-data';
 import { OnboardingPreviewStage } from './onboarding-preview-stage';
+import { OnboardingCrawlProgress } from './onboarding-crawl-progress';
 
 function SelectableChip({
   option,
@@ -74,6 +75,7 @@ export function OnboardingView() {
 
   const [step, setStep] = useState<number>(1);
   const [previewReady, setPreviewReady] = useState(false);
+  const [crawlingActive, setCrawlingActive] = useState(false);
 
   const [referralSource, setReferralSource] = useState<string>(
     initialData?.referralSource || ''
@@ -260,7 +262,7 @@ export function OnboardingView() {
         }
       }
 
-      setPreviewReady(true);
+      setCrawlingActive(true);
     } catch (err) {
       pushToast({
         title: 'Unable to save setup',
@@ -272,6 +274,19 @@ export function OnboardingView() {
       setSaving(false);
     }
   };
+
+  if (crawlingActive) {
+    return (
+      <OnboardingCrawlProgress
+        websiteUrl={normalizedWebsiteUrl}
+        agentRole={agentRole}
+        onComplete={() => {
+          setCrawlingActive(false);
+          setPreviewReady(true);
+        }}
+      />
+    );
+  }
 
   if (previewReady) {
     return (

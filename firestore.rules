@@ -103,9 +103,8 @@ service cloud.firestore {
         && (!('requestedAt' in data) || (data.requestedAt is string && data.requestedAt.size() <= 80));
     }
 
-    // --- Validation Blueprints ---
     function isValidUserProfile(data, userId) {
-      return data.keys().hasAll(['id', 'fullName', 'email', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['id', 'fullName', 'email', 'updatedAt'])
         && data.keys().hasOnly(['id', 'fullName', 'email', 'avatarUrl', 'roleTitle', 'onboardingCompleted', 'planSelected', 'selectedPlan', 'billingCycle', 'onboardingData', 'enterpriseContact', 'createdAt', 'updatedAt'])
         && data.id == userId
         && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120
@@ -118,8 +117,8 @@ service cloud.firestore {
         && (!('billingCycle' in data) || data.billingCycle in ['monthly', 'yearly'])
         && (!('onboardingData' in data) || isValidOnboardingData(data.onboardingData))
         && (!('enterpriseContact' in data) || isValidEnterpriseContact(data.enterpriseContact))
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
+        && (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string)
+        && (data.updatedAt is timestamp || data.updatedAt == request.time);
     }
 
     function isValidMembership(data, userId, workspaceId) {
@@ -388,14 +387,15 @@ service cloud.firestore {
       allow list: if false;
       allow create: if isVerified() && isValidId(userId) && request.auth.uid == userId
         && isValidUserProfile(incoming(), userId)
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
+        && (incoming().createdAt == request.time || incoming().createdAt is timestamp)
+        && (incoming().updatedAt == request.time || incoming().updatedAt is timestamp);
       allow update: if isVerified() && isValidId(userId) && request.auth.uid == userId
         && isValidUserProfile(incoming(), userId)
-        && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'email', 'roleTitle', 'avatarUrl', 'onboardingCompleted', 'planSelected', 'selectedPlan', 'billingCycle', 'onboardingData', 'enterpriseContact', 'updatedAt'])
-        && incoming().id == existing().id
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time;
+        && incoming().diff(existing()).affectedKeys().hasOnly(['id', 'fullName', 'email', 'roleTitle', 'avatarUrl', 'onboardingCompleted', 'planSelected', 'selectedPlan', 'billingCycle', 'onboardingData', 'enterpriseContact', 'updatedAt'])
+        && incoming().id == userId
+        && (!('id' in existing()) || incoming().id == existing().id)
+        && (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt)
+        && (incoming().updatedAt == request.time || incoming().updatedAt is timestamp);
       allow delete: if false;
 
       match /memberships/{workspaceId} {
@@ -607,20 +607,7 @@ service cloud.firestore {
           && isWorkspaceMember(workspaceId)
           && incoming().workspaceOwnerId == getWorkspace(workspaceId).ownerId
           && incoming().createdAt == request.time;
-        allow update: if isVerified() && isValidId(workspaceId) && isValidId(subId)
-          && subId == workspaceId
-          && isValidSubscription(incoming(), workspaceId, subId)
-          && existing().workspaceOwnerId == request.auth.uid
-          && incoming().diff(existing()).affectedKeys().hasOnly(['planName', 'subscriptionStatus', 'billingProvider', 'currentPeriodStart', 'currentPeriodEnd'])
-          && incoming().id == existing().id
-          && incoming().workspaceId == existing().workspaceId
-          && incoming().workspaceOwnerId == existing().workspaceOwnerId
-          && incoming().memberUids == existing().memberUids
-          && incoming().createdAt == existing().createdAt
-          && incoming().subscriptionStatus in ['active', 'trialing']
-          && incoming().currentPeriodStart == request.time
-          && incoming().currentPeriodEnd == request.time;
-        allow delete: if false;
+        allow update, delete: if false;
       }
 
       match /phone_numbers/{phoneId} {
@@ -673,7 +660,20 @@ service cloud.firestore {
           && incoming().currentPeriodEnd == request.time
           && incoming().createdAt == request.time
           && existsAfter(/databases/$(database)/documents/workspaces/$(workspaceId));
-        allow update, delete: if false;
+        allow update: if isVerified() && isValidId(workspaceId) && isValidId(subId)
+          && subId == workspaceId
+          && isValidSubscription(incoming(), workspaceId, subId)
+          && existing().workspaceOwnerId == request.auth.uid
+          && incoming().diff(existing()).affectedKeys().hasOnly(['planName', 'subscriptionStatus', 'billingProvider', 'currentPeriodStart', 'currentPeriodEnd'])
+          && incoming().id == existing().id
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().workspaceOwnerId == existing().workspaceOwnerId
+          && incoming().memberUids == existing().memberUids
+          && incoming().createdAt == existing().createdAt
+          && incoming().subscriptionStatus in ['active', 'trialing']
+          && (incoming().currentPeriodStart == request.time || incoming().currentPeriodStart is timestamp)
+          && (incoming().currentPeriodEnd == request.time || incoming().currentPeriodEnd is timestamp);
+        allow delete: if false;
       }
 
       match /api_keys/{keyId} {

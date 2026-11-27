@@ -157,7 +157,9 @@ export function KnowledgeBaseView({
       });
       pushToast({
         title: 'Source trained successfully',
-        description: `Indexed ${data.indexedChunksCount || 1} knowledge segments for live voice answers.`,
+        description: data.pageTitle
+          ? `Indexed "${data.pageTitle}" via WebCrawlerAPI (${data.indexedChunksCount || 1} segments).`
+          : `Indexed ${data.indexedChunksCount || 1} knowledge segments for live voice answers.`,
         variant: 'success',
       });
     } catch (err) {
@@ -488,10 +490,13 @@ export function KnowledgeBaseView({
                   {websiteError && (
                     <p className="text-xs text-rose-600 dark:text-rose-400">{websiteError}</p>
                   )}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                      Automated crawler extracts text, chunks paragraphs, and indexes vector embeddings.
-                    </span>
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10 dark:bg-blue-950/60 dark:text-blue-300">
+                        WebCrawlerAPI
+                      </span>
+                      <span>Headless JS crawler strips boilerplate and indexes clean markdown.</span>
+                    </div>
                     <button
                       type="submit"
                       disabled={submittingWebsite}

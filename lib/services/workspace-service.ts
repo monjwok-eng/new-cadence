@@ -926,6 +926,7 @@ export async function updateUserProfileInDb(
 ) {
   const path = `users/${uid}`;
   const payload: Record<string, unknown> = {
+    id: uid,
     fullName: sanitizeText(updates.fullName, 120),
     email: sanitizeText(updates.email, 200),
     roleTitle: sanitizeText(updates.roleTitle, 100),
@@ -938,7 +939,7 @@ export async function updateUserProfileInDb(
     }
   }
   try {
-    await updateDoc(doc(db, path), payload);
+    await setDoc(doc(db, path), payload, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -966,11 +967,16 @@ export async function saveOnboardingInDb(
 
   const path = `users/${uid}`;
   try {
-    await updateDoc(doc(db, path), {
-      onboardingData: cleanData,
-      onboardingCompleted: Boolean(completed),
-      updatedAt: serverTimestamp(),
-    });
+    await setDoc(
+      doc(db, path),
+      {
+        id: uid,
+        onboardingData: cleanData,
+        onboardingCompleted: Boolean(completed),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
     return cleanData;
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
@@ -992,6 +998,7 @@ export async function selectPlanInDb(
   const now = serverTimestamp();
 
   const userUpdates: Record<string, unknown> = {
+    id: uid,
     planSelected: true,
     selectedPlan: input.planName,
     billingCycle: input.billingCycle,
@@ -1006,7 +1013,7 @@ export async function selectPlanInDb(
     };
   }
 
-  batch.update(doc(db, 'users', uid), userUpdates);
+  batch.set(doc(db, 'users', uid), userUpdates, { merge: true });
 
   if (workspace && workspace.ownerId === uid) {
     batch.update(doc(db, 'workspaces', workspace.id), {

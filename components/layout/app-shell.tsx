@@ -490,7 +490,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className={
                 pathname === '/create-chatbot'
                   ? 'mx-auto max-w-screen-2xl px-4 py-6 sm:px-6'
-                  : 'mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10'
+                  : 'px-4 py-6 sm:px-6 sm:py-8'
               }
             >
               {backendError && (

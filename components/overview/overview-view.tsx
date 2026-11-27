@@ -73,14 +73,7 @@ export function OverviewView() {
           <h1 className="font-display text-3xl font-bold tracking-tight text-gray-900">
             Chatbots
           </h1>
-          <button
-            type="button"
-            onClick={() => setTutorialOpen(true)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-100 whitespace-nowrap shrink-0"
-          >
-            <CirclePlay className="h-4 w-4 shrink-0" />
-            Watch Video Tutorial
-          </button>
+
         </div>
 
         <Link
@@ -150,7 +143,7 @@ export function OverviewView() {
                     onClick={(e) => e.stopPropagation()}
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 whitespace-nowrap"
                   >
-                    <ExternalLink className="h-4 w-4 text-gray-500" />
+                    <svg aria-hidden="true" className="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256"><path d="M228,104a12,12,0,0,1-24,0V69l-59.51,59.51a12,12,0,0,1-17-17L187,52H152a12,12,0,0,1,0-24h64a12,12,0,0,1,12,12Zm-44,24a12,12,0,0,0-12,12v64H52V84h64a12,12,0,0,0,0-24H48A20,20,0,0,0,28,80V208a20,20,0,0,0,20,20H176a20,20,0,0,0,20-20V140A12,12,0,0,0,184,128Z"></path></svg>
                     Chat Now
                   </Link>
 
@@ -166,7 +159,7 @@ export function OverviewView() {
                       </>
                     ) : (
                       <>
-                        <Copy className="h-4 w-4 text-gray-500" />
+                        <svg aria-hidden="true" className="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256"><path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32Zm-8,128H176V88a8,8,0,0,0-8-8H96V48H208Z"></path></svg>
                         Copy Embed
                       </>
                     )}
