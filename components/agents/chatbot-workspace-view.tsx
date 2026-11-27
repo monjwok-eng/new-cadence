@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
-  BookOpen,
-  Calendar,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -15,21 +13,16 @@ import {
   Code2,
   Copy,
   FileEdit,
-  FileText,
   Globe,
   Info,
-  Link2,
   Menu,
   MessageSquare,
   Pause,
   PenLine,
   Play,
   Plus,
-  Quote,
   Save,
   Sparkles,
-  ThumbsDown,
-  ThumbsUp,
   Trash2,
   UserPlus,
   Volume2,
@@ -835,7 +828,7 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
                         <div className="p-6">
                           <div className="flex items-start gap-3">
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50">
-                              <Link2 className="h-5 w-5 text-blue-600" strokeWidth={2} />
+                              <svg aria-hidden="true" className="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256"><path d="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM128.57,189.66l-5.46,5.45a44,44,0,0,1-62.22-62.22l24-24a44.08,44.08,0,0,1,55.56-5.48,8,8,0,0,1-8.9,13.3A28,28,0,0,0,96.2,120.2l-24,24a28,28,0,0,0,39.6,39.6l5.45-5.46a8,8,0,0,1,11.32,11.32Zm66.54-66.55-24,24a44.08,44.08,0,0,1-55.56,5.48,8,8,0,0,1,8.9-13.3,28.06,28.06,0,0,0,35.35-3.49l24-24a28,28,0,0,0-39.6-39.6l-5.45,5.46a8,8,0,0,1-11.32-11.32l5.46-5.45a44,44,0,0,1,62.22,62.22Z" /></svg>
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-gray-700 transition-colors duration-150 group-hover:text-gray-900">
@@ -879,7 +872,7 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
                         <div className="p-6">
                           <div className="flex items-start gap-3">
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50">
-                              <FileText className="h-5 w-5 text-blue-600" strokeWidth={2} />
+                              <svg aria-hidden="true" className="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256"><path d="M213.66,66.34l-40-40A8,8,0,0,0,168,24H88A16,16,0,0,0,72,40V56H56A16,16,0,0,0,40,72V216a16,16,0,0,0,16,16H168a16,16,0,0,0,16-16V200h16a16,16,0,0,0,16-16V72A8,8,0,0,0,213.66,66.34ZM136,192H88a8,8,0,0,1,0-16h48a8,8,0,0,1,0,16Zm0-32H88a8,8,0,0,1,0-16h48a8,8,0,0,1,0,16Zm64,24H184V104a8,8,0,0,0-2.34-5.66l-40-40A8,8,0,0,0,136,56H88V40h76.69L200,75.31Z" /></svg>
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-gray-700 transition-colors duration-150 group-hover:text-gray-900">
@@ -923,7 +916,7 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
                         <div className="p-6">
                           <div className="flex items-start gap-3">
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50">
-                              <Quote className="h-5 w-5 text-blue-600" strokeWidth={2} />
+                              <svg aria-hidden="true" className="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256"><path d="M116,72v88a48.05,48.05,0,0,1-48,48,8,8,0,0,1,0-16,32,32,0,0,0,32-32v-8H40a16,16,0,0,1-16-16V72A16,16,0,0,1,40,56h60A16,16,0,0,1,116,72ZM216,56H156a16,16,0,0,0-16,16v64a16,16,0,0,0,16,16h60v8a32,32,0,0,1-32,32,8,8,0,0,0,0,16,48.05,48.05,0,0,0,48-48V72A16,16,0,0,0,216,56Z" /></svg>
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-gray-700 transition-colors duration-150 group-hover:text-gray-900">
@@ -960,7 +953,7 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
                       <div className="group rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-150 hover:shadow-md">
                         <div className="p-6">
                           <div className="flex items-start gap-3">
-                            <Calendar className="h-8 w-8 shrink-0 text-blue-600" strokeWidth={1.9} />
+                            <svg aria-hidden="true" className="h-8 w-8 shrink-0 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32Zm0,48H48V48H72v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24Z" /></svg>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-gray-700 transition-colors duration-200 group-hover:text-gray-900">
                                 Total Messages
@@ -987,7 +980,7 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
                       <div className="group rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-150 hover:shadow-md">
                         <div className="p-6">
                           <div className="flex items-start gap-3">
-                            <ThumbsUp className="h-8 w-8 shrink-0 text-green-600" strokeWidth={1.9} />
+                            <svg aria-hidden="true" className="h-8 w-8 shrink-0 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256"><path d="M234,80.12A24,24,0,0,0,216,72H160V56a40,40,0,0,0-40-40,8,8,0,0,0-7.16,4.42L75.06,96H32a16,16,0,0,0-16,16v88a16,16,0,0,0,16,16H204a24,24,0,0,0,23.82-21l12-96A24,24,0,0,0,234,80.12ZM32,112H72v88H32Z" /></svg>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-gray-700 transition-colors duration-200 group-hover:text-gray-900">
                                 Positive Feedback
@@ -1014,7 +1007,7 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
                       <div className="group rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-150 hover:shadow-md">
                         <div className="p-6">
                           <div className="flex items-start gap-3">
-                            <ThumbsDown className="h-8 w-8 shrink-0 text-red-600" strokeWidth={1.9} />
+                            <svg aria-hidden="true" className="h-8 w-8 shrink-0 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256"><path d="M239.82,157l-12-96A24,24,0,0,0,204,40H32A16,16,0,0,0,16,56v88a16,16,0,0,0,16,16H75.06l37.78,75.58A8,8,0,0,0,120,240a40,40,0,0,0,40-40V184h56a24,24,0,0,0,23.82-27ZM72,144H32V56H72Z" /></svg>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-gray-700 transition-colors duration-200 group-hover:text-gray-900">
                                 Negative Feedback
@@ -1041,7 +1034,7 @@ export function ChatbotWorkspaceView({ agentId }: { agentId: string }) {
                       <div className="group rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-150 hover:shadow-md">
                         <div className="p-6">
                           <div className="flex items-start gap-3">
-                            <BookOpen className="h-8 w-8 shrink-0 text-blue-600" strokeWidth={1.9} />
+                            <svg aria-hidden="true" className="h-8 w-8 shrink-0 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256"><path d="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM80,208H48V48H80Zm96-56H112a8,8,0,0,1,0-16h64a8,8,0,0,1,0,16Zm0-32H112a8,8,0,0,1,0-16h64a8,8,0,0,1,0,16Z" /></svg>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
                                 <p className="text-sm font-semibold text-gray-700 transition-colors duration-200 group-hover:text-gray-900">
